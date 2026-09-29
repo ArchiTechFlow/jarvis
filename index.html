@@ -220,7 +220,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ora = d => new Date(d).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const ls = (k,v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k,v); } catch {} };
-const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[],prj:[],jur:[]};
+const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[],prj:[],jur:[],cc:[]};
 let ctx='acasa', tab='acasa', fTip='toate', q='', qg='', fDec='deschise', pagina=30, notaK=null, draft='', rec=null, thread=null, ordP=ls('jv_ord')||'prio';
 const prevSeen = Number(ls('jv_seen')) || Date.now() - 864e5;
 
@@ -447,7 +447,17 @@ function rThr(){
         <span class="meta w">${x.l.length} ${x.l.length===1?'mesaj':'mesaje'} · ultimul ${ora(u.creat_la)}${ctx==='acasa'?' · '+esc(pjn(cerP(u))):''}${dela&&u.stare==='asteapta_adrian'?`<br><b style="color:var(--attn)">Te întreabă: ${esc(dela.replace(/^•\s*/,'').slice(0,120))}</b>`:''}</span></button>`; }).join('')||'<div class="empty">Nicio conversație încă. Scrie mai sus și apasă Trimite.</div>'}</div>`);
     return;
   }
-  const l = firul();
+  const l = firul(), sc = S.cc.find(x=>x.cheie===tkey(thread));
+  if (sc && sc.mesaje?.length) {   // conversația e o sesiune Claude reală: arăt toată sesiunea, inclusiv ce ai continuat în Claude Code
+    const lucru = l.find(c=>['noua','preluata','in_lucru'].includes(c.stare));
+    const bule = sc.mesaje.map(m=>m.cine==='adrian'
+      ? `<div class="msg eu">${esc(m.text)}<div class="meta">${m.ts?ora(m.ts):''}</div></div>`
+      : `<div class="msg jv">${esc(m.text.replace(/^\[Au lucrat efectiv: .*\]\n?/,''))}<div class="meta">Claude${m.ts?' · '+ora(m.ts):''}</div></div>`).join('')
+      + (lucru?`<div class="msg jv"><span class="meta">${st(lucru.stare)} ${lucru.stare==='noua'?(runnerOn()?'Urmează la rând.':'Calculatorul e oprit: așteaptă.'):'Claude lucrează la mesajul tău…'}</span></div>`:'');
+    setHTML('thr', `<div class="card" style="margin-top:var(--s4)"><div class="t">Sesiune Claude reală, cu memorie</div><p class="meta" style="margin:4px 0 0">O continui aici sau în Claude Code pe calculator; ce scrii acolo apare și aici. Comanda, în terminal, în folderul TechFlow:</p><div class="acts" style="grid-template-columns:1fr auto"><input type="text" readonly value="claude --resume ${esc(sc.sesiune)}" id="cmdres"><button class="btn sec sm" data-copy="cmdres">Copiază</button></div></div>
+      <div class="sec-t"><h2>${esc(thread.titlu).slice(0,80)}</h2><span class="c">${sc.mesaje.length} mesaje</span></div><div class="stack">${bule}</div>`);
+    return;
+  }
   const bule = l.map(c=>`<div class="msg eu">${esc(c.interpretare?.mesaj||(c.sursa==="buton"?titluC(c):c.text_brut))}<div class="meta">${ora(c.creat_la)}</div></div><div class="msg jv">${fmtJarvis(c)}</div>`).join('');
   setHTML('thr', `<div class="sec-t"><h2>${esc(thread.titlu).slice(0,80)}</h2><span class="c">${l.length} ${l.length===1?'mesaj':'mesaje'}</span></div><div class="stack">${bule||'<div class="empty">Începe discuția: scrie sau dictează mai sus.</div>'}</div>`);
 }
@@ -613,6 +623,7 @@ async function bilant(id){
   toast(runnerOn()?'Pornit. Bilanțul e gata în câteva minute.':'Trimis. Așteaptă pornirea calculatorului.'); await load(); bilantDialog(id);
 }
 function istoric(){
+  if (S.cc.some(x=>x.cheie===tkey(thread))) return '';   // conversația e o sesiune Claude cu memorie: nu mai lipim istoricul
   const h = firul().filter(c=>c.stare==='gata'||c.stare==='asteapta_adrian').slice(-3).map(c=>`Adrian: ${c.interpretare?.mesaj||c.text_brut.slice(0,400)}\nJarvis: ${raspuns(c).slice(0,700)}`).join('\n\n');
   return h ? `\n\nDiscuția de până acum:\n${h}` : '';
 }
@@ -688,7 +699,7 @@ function rPulse(){ const r=runnerOn(); $('pulse').className = 'st '+(r?'ok':'bad
 async function load(){
   if (document.activeElement?.id==='nota') return;
   const g = (t,o,n=500) => db.from(t).select('*').order(o[0],{ascending:o[1]}).limit(n).then(r=>r.data||[]);
-  S.jur = await g('jurnal',['ts',false],30);
+  S.jur = await g('jurnal',['ts',false],30); S.cc = await g('conversatii_claude',['actualizat_la',false],100);
   [S.inv,S.pct,S.dec,S.idei,S.cer,S.ap,S.msg,S.act,S.sar,S.uti,S.run,S.prj] = await Promise.all([
     g('inventar',['nume',true]),g('puncte',['id',true]),g('decizii',['id',true]),g('idei',['id',true]),g('cereri',['creat_la',false],120),g('aprobari',['creat_la',false],80),
     g('mesaje',['creat_la',true],300),g('actiuni',['creat_la',false]),g('sarcini_autonome',['titlu',true]),g('utilizare',['nr',false]),g('runner',['masina',true]),g('proiecte',['ordine',true])]);
@@ -735,6 +746,7 @@ document.querySelector('main').addEventListener('click', async e => {
     if (qa.dataset.qa==='azi') { draft=`Cu ce decizie de pe ${sc} începem azi, și de ce?`; $('t').value=draft; $('t').focus(); return toast('Textul e pregătit. Apasă Trimite când vrei.'); }
     if (qa.dataset.qa==='idee') { draft='Am un link sau o idee: '; $('t').value=draft; $('t').focus(); return; }
     if (qa.dataset.qa==='dez') { draft='Vreau să dezbatem: '; $('t').value=draft; $('t').focus(); return; } }
+  const cp = T.closest('[data-copy]'); if (cp) { const i=$(cp.dataset.copy); try { await navigator.clipboard.writeText(i.value); toast('Copiat.'); } catch { i.select(); toast('Selectat: apasă Ctrl+C.'); } return; }
   if (T.closest('[data-thread-x]')) { thread = null; rComp(); return rThr(); }
   const cv = T.closest('[data-conv],[data-raspunde]'); if (cv) { const k = cv.dataset.conv||cv.dataset.raspunde, x = conversatii().find(z=>z.k===k); if (!x) return;
     const [tip,...rest] = k.split('|'); const id = rest.join('|'); const c0 = x.l[0];
