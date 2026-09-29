@@ -419,7 +419,7 @@ function rComp(){
 // conversații: fiecare mesaj nou începe una; răspunsurile o continuă. Se deschid și se continuă din listă.
 const cheieConv = c => c.interpretare?.thread || 'conv|'+c.id;
 const conversatii = () => { const g = {};
-  S.cer.filter(c=>c.stare!=='anulata'&&inC(cerP(c))&&(c.sursa==='telefon'||c.sursa==='chat'||c.interpretare?.thread)).forEach(c=>(g[cheieConv(c)] ||= []).push(c));
+  S.cer.filter(c=>c.stare!=='anulata'&&inC(cerP(c))&&(c.sursa==='telefon'||c.sursa==='chat'||c.interpretare?.thread||(c.sursa==='buton'&&!c.interpretare?.sarcina_id&&c.interpretare?.tip!=='bilant'))).forEach(c=>(g[cheieConv(c)] ||= []).push(c));
   return Object.entries(g).map(([k,l])=>{ l.sort((a,b)=>new Date(a.creat_la)-new Date(b.creat_la)); return {k,l,ult:l[l.length-1]}; }).sort((a,b)=>new Date(b.ult.creat_la)-new Date(a.ult.creat_la)); };
 const firul = () => { const k = tkey(thread); return k ? (conversatii().find(x=>x.k===k)?.l||[]).slice(-30) : []; };
 const stricat = t => /^(Dovad|Verificare rulat)/i.test(t||'');
@@ -443,12 +443,12 @@ function rThr(){
   if (!thread) {
     const cv = conversatii();
     setHTML('thr', `<div class="sec-t"><h2>Conversațiile ${ctx!=='acasa'?'pe '+esc(pjn(ctx)):'tale'}</h2><span class="c">${cv.length}</span></div><div class="stack">${cv.map(x=>{ const c0=x.l[0], u=x.ult, r=raspuns(u), dela=(r.match(/De la tine:\s*(.*)/)||[])[1]||((r.split('înainte să pornesc:')[1]||'').trim().split('\n')[0]);
-      return `<button class="pj nr" data-conv="${esc(x.k)}"><span class="t">${esc(c0.interpretare?.mesaj||c0.text_brut).slice(0,140)}</span>${st(u.stare)}
+      return `<button class="pj nr" data-conv="${esc(x.k)}"><span class="t">${esc(c0.interpretare?.mesaj||(c0.sursa==="buton"?titluC(c0):c0.text_brut)).slice(0,140)}</span>${st(u.stare)}
         <span class="meta w">${x.l.length} ${x.l.length===1?'mesaj':'mesaje'} · ultimul ${ora(u.creat_la)}${ctx==='acasa'?' · '+esc(pjn(cerP(u))):''}${dela&&u.stare==='asteapta_adrian'?`<br><b style="color:var(--attn)">Te întreabă: ${esc(dela.replace(/^•\s*/,'').slice(0,120))}</b>`:''}</span></button>`; }).join('')||'<div class="empty">Nicio conversație încă. Scrie mai sus și apasă Trimite.</div>'}</div>`);
     return;
   }
   const l = firul();
-  const bule = l.map(c=>`<div class="msg eu">${esc(c.interpretare?.mesaj||c.text_brut)}<div class="meta">${ora(c.creat_la)}</div></div><div class="msg jv">${fmtJarvis(c)}</div>`).join('');
+  const bule = l.map(c=>`<div class="msg eu">${esc(c.interpretare?.mesaj||(c.sursa==="buton"?titluC(c):c.text_brut))}<div class="meta">${ora(c.creat_la)}</div></div><div class="msg jv">${fmtJarvis(c)}</div>`).join('');
   setHTML('thr', `<div class="sec-t"><h2>${esc(thread.titlu).slice(0,80)}</h2><span class="c">${l.length} ${l.length===1?'mesaj':'mesaje'}</span></div><div class="stack">${bule||'<div class="empty">Începe discuția: scrie sau dictează mai sus.</div>'}</div>`);
 }
 
@@ -587,6 +587,8 @@ async function cere(text, extra){
   if (error) { alert(error.message); return null; }
   return data;
 }
+// orice buton care pornește lucru deschide conversația lui în Chat, ca să vezi răspunsul acolo
+function deschideConv(c, titlu){ if (!c) return; thread = {tip:'conv',id:c.id,titlu:(titlu||titluC(c)).slice(0,120),proiect:cerP(c)}; go(ctx,'chat'); rComp(); rThr(); }
 async function actiune(k,a,nota){
   const [tip,id] = k.split('|'), x = itemi().find(i=>i.tip===tip&&i.id===id) || {titlu:id,det:'',proiect:'ecosistem'};
   if (a==='dezbatem') return openThread({tip,id,titlu:x.titlu,proiect:x.proiect,det:x.det});
@@ -596,7 +598,7 @@ async function actiune(k,a,nota){
   if (a==='fa') text = `Execută, în măsura în care e reversibil: ${ctxt}\n\nDacă îți lipsește o informație, întreabă în răspuns.`;
   if (a==='aprob') text = `Adrian APROBĂ decizia ${ctxt}\n\nÎnregistreaz-o în 01 TechFlow-OS/_HARNESS/DECIZII-PENTRU-ADRIAN.md cu REZOLVAT ${new Date().toISOString().slice(0,10)} și aplică ce ține de tine.`;
   if (a==='trimite-nota' && nota) text = `Notă de la Adrian pe ${ctxt}\n\nNota: ${nota}\n\nÎnregistreaz-o (pentru decizii, în DECIZII-PENTRU-ADRIAN.md) și acționează pe ea.`;
-  if (text) { await cere(text,{interp:{item_tip:tip,item_id:id,proiect:x.proiect}}); toast(runnerOn()?'Trimis. Jarvis lucrează; răspunsul apare în Chat.':'Trimis. Așteaptă pornirea calculatorului.'); }
+  if (text) { const c = await cere(text,{interp:{item_tip:tip,item_id:id,proiect:x.proiect}}); deschideConv(c, x.titlu); toast(runnerOn()?'Trimis. Jarvis lucrează; urmărești aici.':'Trimis. Așteaptă pornirea calculatorului.'); }
   else toast('Notat.');
   notaK = null; load();
 }
@@ -726,8 +728,8 @@ document.querySelector('main').addEventListener('click', async e => {
   const bi = T.closest('[data-bilant]'); if (bi) return bilant(bi.dataset.bilant);
   const rd = T.closest('[data-recdez]'); if (rd) { const p = pj(rd.dataset.recdez); return openThread({tip:'proiect',id:p.id,titlu:`${p.nume}: ${p.urmatorul_pas}`,proiect:p.id,det:`Prioritatea ${p.prioritate}. ${p.motiv||''}\nUrmătorul pas propus: ${p.urmatorul_pas}\nCine: ${p.actor||''}`}); }
   if (T.closest('[data-priodez]')) return openThread({tip:'prioritati',id:'ordine',titlu:'Ordinea priorităților proiectelor',proiect:null,det:'Ordinea propusă (01 TechFlow-OS/_HARNESS/PRIORITATI.md):\n'+prio().map(p=>`${p.prioritate}. ${p.nume}: ${p.urmatorul_pas||'-'}`).join('\n')});
-  const of = T.closest('[data-ofdez]'); if (of) { await cere(`Rezumă-mi oferta ${of.dataset.ofdez} din 03 Clients/00 Ofertare/02 Oferte emise/ (valoare, componente, condiții, stare, ce urmează). Citește folderul ofertei; nu trimite nimic.`,{interp:{proiect:ctx}}); toast('Trimis. Rezumatul apare în Chat.'); return load(); }
-  if (T.closest('[data-docdez]')) { const p = pj(ctx); await cere(`Rezumă-mi documentele din folderul clientului «${p.nume}» (${p.surse}): ce conține fiecare, ce e recent, ce lipsește. Citește doar numele și conținutul fișierelor text; nu modifica nimic.`,{interp:{proiect:ctx}}); toast('Trimis. Rezumatul apare în Chat.'); return load(); }
+  const of = T.closest('[data-ofdez]'); if (of) { S._ultima = await cere(`Rezumă-mi oferta ${of.dataset.ofdez} din 03 Clients/00 Ofertare/02 Oferte emise/ (valoare, componente, condiții, stare, ce urmează). Citește folderul ofertei; nu trimite nimic.`,{interp:{proiect:ctx}}); deschideConv(S._ultima,'Rezumatul ofertei '+of.dataset.ofdez); return load(); }
+  if (T.closest('[data-docdez]')) { const p = pj(ctx); await cere(`Rezumă-mi documentele din folderul clientului «${p.nume}» (${p.surse}): ce conține fiecare, ce e recent, ce lipsește. Citește doar numele și conținutul fișierelor text; nu modifica nimic.`,{interp:{proiect:ctx}}).then(c=>deschideConv(c,'Rezumatul documentelor '+p.nume)); return load(); }
   const qa = T.closest('[data-qa]'); if (qa) { const p = ctx!=='acasa'&&pj(ctx), sc = p?`proiectul ${p.nume}`:'tot ecosistemul';
     if (qa.dataset.qa==='rest') { draft=`Unde am rămas pe ${sc}? Ultimul lucru făcut, ce urmează, ce așteaptă decizia mea.`; $('t').value=draft; $('t').focus(); return toast('Textul e pregătit. Apasă Trimite când vrei.'); }
     if (qa.dataset.qa==='azi') { draft=`Cu ce decizie de pe ${sc} începem azi, și de ce?`; $('t').value=draft; $('t').focus(); return toast('Textul e pregătit. Apasă Trimite când vrei.'); }
@@ -748,7 +750,7 @@ document.querySelector('main').addEventListener('click', async e => {
   if (T.closest('[data-clear]')) { micStop(); draft = ''; $('t').value = ''; return; }
   const use = T.closest('[data-use]'); if (use) { ls('jv_use','1'); draft = `Folosește ${use.dataset.tp==='agent'?'agentul':'skill-ul'} ${use.dataset.use} pentru: `; go(ctx,'chat'); $('t').value = draft; $('t').focus(); return; }
   const run = T.closest('[data-run]'); if (run) return ruleaza(run.dataset.run);
-  const et = T.closest('[data-etapa]'); if (et) { const e9 = ETP().find(x=>x.id==='E-'+et.dataset.etapa); await cere(`Etapa ${et.dataset.etapa} din Drumul ecosistemului („${e9.titlu}”): ${e9.detalii}. Propune primul pas concret, cu cost și durată, și pregătește-l. Nu executa nimic ireversibil.`,{interp:{item_tip:'etapa',item_id:e9.id,proiect:'ecosistem'}}); toast('Trimis. Răspunsul apare în Chat.'); return load(); }
+  const et = T.closest('[data-etapa]'); if (et) { const e9 = ETP().find(x=>x.id==='E-'+et.dataset.etapa); await cere(`Etapa ${et.dataset.etapa} din Drumul ecosistemului („${e9.titlu}”): ${e9.detalii}. Propune primul pas concret, cu cost și durată, și pregătește-l. Nu executa nimic ireversibil.`,{interp:{item_tip:'etapa',item_id:e9.id,proiect:'ecosistem'}}).then(c=>deschideConv(c,'Primul pas: '+e9.titlu)); return load(); }
   const b = T.closest('button'); if (!b) return;
   if (b.dataset.id) { await db.from('aprobari').update({decizie:b.dataset.d,decis_la:new Date().toISOString()}).eq('id',b.dataset.id); return load(); }
   const a = b.dataset.a; if (a) {
