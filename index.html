@@ -78,7 +78,7 @@ details.card[open]>summary .clip{display:none}
 #app.on{display:block}
 #top{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line);padding:var(--s2) var(--s4);padding-top:calc(var(--s2) + env(safe-area-inset-top))}
 #top .r1{display:flex;align-items:center;gap:var(--s2);max-width:1200px;margin:0 auto}
-#back{display:none}
+#back,#brand{display:none}
 #ctx{flex:1;min-width:0;max-width:460px}
 #pulse{margin-left:auto}
 #col{padding:var(--s4) var(--s4) 96px;max-width:1200px;margin:0 auto}
@@ -98,10 +98,14 @@ section{display:none}section.on{display:block}
   nav#nav button.on{background:var(--line);color:var(--ink)}nav#nav button.on::before{display:none}
   nav#nav .n{position:static;margin-left:auto}
   #col{padding:var(--s5) 32px 48px;margin:0;max-width:none;min-width:0}
-  #col>*{max-width:1000px}
+  #col>*{max-width:1500px}
+  #top{padding-left:0;padding-right:var(--s5)}
+  #top .r1{max-width:none;margin:0}
+  #brand{display:block;flex:none;width:244px;padding:0 var(--s4);font:700 19px var(--f-head)}
 }
 .grid{display:grid;gap:var(--s2)}
 @media(min-width:900px){.grid.g2{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+@media(min-width:1300px){.grid.g2{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .hero{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap}
 .hero .big{font-size:40px;line-height:1}
 .hero .big.attn{color:var(--attn)}
@@ -171,6 +175,7 @@ dialog .db{padding:var(--s4)}
 
 <div id="app">
   <div id="top"><div class="r1">
+    <span id="brand">Jarvis · TechFlow</span>
     <button class="btn sec sm" id="back" aria-label="Înapoi la Acasă">‹ Acasă</button>
     <select id="ctx" aria-label="Proiect"></select>
     <span id="pulse" class="st"><span>runner</span></span>
