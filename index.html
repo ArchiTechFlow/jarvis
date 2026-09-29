@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b2433">
+<title>Jarvis TechFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f1ec;--surface:#fbfaf7;--ink:#1b2433;--muted:#5b6473;--line:#d9d5ca;
+  --primary:#1f3a5f;--on-primary:#fff;--signal:#b93c08;--on-signal:#fff;--ok:#1a6d43;--warn:#8a6100;--bad:#b3261e;
+  --tint-signal:#f7e4d8;--tint-ok:#dcefe4;--tint-warn:#f5ecd0;--tint-bad:#f6dcda;--tint-idle:#e6e2d8;
+  --shadow:0 1px 0 rgba(27,36,51,.08),0 2px 6px rgba(27,36,51,.10);
+  --f-head:'Archivo',system-ui,sans-serif;--f-body:'Barlow',system-ui,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#12161d;--surface:#1a202a;--ink:#e9ecf2;--muted:#9aa4b5;--line:#2b3444;
+  --primary:#8fb4f0;--on-primary:#0f1620;--signal:#f0894a;--on-signal:#1a0f08;--ok:#5cc890;--warn:#e3b95a;--bad:#f28b82;
+  --tint-signal:#3a2418;--tint-ok:#17301f;--tint-warn:#33290f;--tint-bad:#3a1b19;--tint-idle:#232b38;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.35);}}
+:root[data-theme=dark]{
+  --bg:#12161d;--surface:#1a202a;--ink:#e9ecf2;--muted:#9aa4b5;--line:#2b3444;
+  --primary:#8fb4f0;--on-primary:#0f1620;--signal:#f0894a;--on-signal:#1a0f08;--ok:#5cc890;--warn:#e3b95a;--bad:#f28b82;
+  --tint-signal:#3a2418;--tint-ok:#17301f;--tint-warn:#33290f;--tint-bad:#3a1b19;--tint-idle:#232b38;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.35)}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--f-body);min-height:100dvh}
+button,input,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--f-head);font-weight:700;margin:0;letter-spacing:-.01em}
+.num{font-family:var(--f-head);font-weight:700;font-variant-numeric:tabular-nums}
+svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.f{fill:currentColor;stroke:none}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* shell: telefon = bară jos; desktop = coloană stânga */
+#app{display:none;min-height:100dvh}
+nav#nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(6,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav#nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;background:none;border:0;color:var(--muted);font-size:11.5px;font-weight:500}
+nav#nav button.on{color:var(--primary);font-weight:600}
+nav#nav button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;background:var(--primary);border-radius:0 0 3px 3px}
+.badge{position:absolute;top:6px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--signal);color:var(--on-signal);font:700 11px/18px var(--f-head);text-align:center}
+#brand{display:none}
+#col{padding:0 16px 96px;max-width:920px;margin:0 auto}
+header.top{display:flex;align-items:flex-start;gap:12px;padding:18px 0 12px}
+header.top .t{flex:1}
+header.top h1{font-size:26px;line-height:1.1}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:15px}
+#pulse{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap;padding-top:6px}
+#pulse i{width:9px;height:9px;border-radius:50%;background:var(--bad)}#pulse.on i{background:var(--ok)}
+.ghost{background:none;border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 14px;color:var(--muted);cursor:pointer}
+@media(min-width:900px){
+  #app{display:none}
+  #app.on{display:flex}
+  nav#nav{position:sticky;top:0;align-self:flex-start;height:100dvh;width:220px;flex:none;grid-template-columns:1fr;grid-auto-rows:min-content;align-content:start;border-top:0;border-right:1px solid var(--line);padding:0 12px}
+  #brand{display:block;padding:20px 8px 18px;font:700 19px var(--f-head)}
+  #brand small{display:block;font:500 12px var(--f-body);color:var(--muted);margin-top:2px}
+  nav#nav button{flex-direction:row;justify-content:flex-start;gap:12px;min-height:46px;padding:0 12px;border-radius:10px;font-size:15px;text-align:left}
+  nav#nav button.on{background:var(--tint-idle);color:var(--ink)}
+  nav#nav button.on::before{display:none}
+  .badge{position:static;margin-left:auto}
+  #col{flex:1;padding:0 32px 48px;margin:0;max-width:none}
+  #col>*{max-width:860px}
+}
+#app.on{display:block}
+@media(min-width:900px){#app.on{display:flex}}
+section{display:none}section.on{display:block}
+
+/* piese */
+.blk{margin:22px 0 0}
+.blk>h2{font-size:15px;color:var(--muted);font-weight:600;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
+.blk>h2 .c{font-family:var(--f-head);color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 8px}
+.item .h{display:flex;gap:8px;align-items:flex-start}
+.item .h>b{flex:1;font-weight:600;font-size:16px}
+.item .m{color:var(--muted);font-size:14px;margin-top:2px}
+.item pre{white-space:pre-wrap;word-wrap:break-word;font:400 14px/1.5 var(--f-body);color:var(--muted);margin:10px 0 0;max-height:340px;overflow:auto}
+details.item>summary{cursor:pointer;list-style:none;display:block}
+details.item>summary::-webkit-details-marker{display:none}
+details.item[open]>summary .h b{color:var(--ink)}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--tint-idle);color:var(--ink);white-space:nowrap}
+.pill.ok{background:var(--tint-ok);color:var(--ok)}.pill.bad{background:var(--tint-bad);color:var(--bad)}.pill.warn{background:var(--tint-warn);color:var(--warn)}.pill.sig{background:var(--tint-signal);color:var(--signal)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:15px;cursor:pointer;box-shadow:var(--shadow)}
+.btn.p{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.s{background:var(--signal);border-color:var(--signal);color:var(--on-signal)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.q{box-shadow:none;background:none;color:var(--muted);font-weight:500}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+input[type=text],input[type=email],input[type=password],textarea{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);resize:vertical}
+textarea{min-height:92px}
+.hint{color:var(--muted);font-size:14px}
+.two{display:grid;gap:22px}
+@media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:14px;color:var(--muted)}
+.toast{position:fixed;left:16px;right:16px;bottom:78px;z-index:9;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:10px;display:none;box-shadow:var(--shadow)}
+@media(min-width:900px){.toast{left:auto;right:24px;bottom:24px;width:340px}}
+.bar{height:6px;border-radius:3px;background:var(--tint-idle);overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+
+/* Azi */
+.hero{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:6px 0 2px}
+.hero .big{font-size:56px;line-height:.95;color:var(--ink)}
+.hero .big.sig{color:var(--signal)}
+.hero .txt{flex:1;min-width:180px;padding-bottom:6px}
+.hero .txt b{display:block;font:700 19px var(--f-head)}
+/* Cere */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}
+.chips button{min-height:38px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--muted);font-size:14px;cursor:pointer;text-align:left}
+.ans{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--tint-idle);white-space:pre-wrap;word-wrap:break-word;font-size:15px}
+/* Drumul */
+.ladder{position:relative;margin:6px 0 0;padding-left:0}
+.st9{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:0 0 14px;position:relative}
+.st9::before{content:"";position:absolute;left:16px;top:34px;bottom:0;width:2px;background:var(--line)}
+.st9:last-child::before{display:none}
+.dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);background:var(--bg);font:700 14px var(--f-head);color:var(--muted)}
+.st9.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.st9.partial .dot{border-color:var(--warn);color:var(--warn)}
+.st9.now .dot{background:var(--signal);border-color:var(--signal);color:var(--on-signal)}
+.st9 .b{padding-top:4px}
+.st9 .b b{font:600 16px var(--f-head)}
+.lev{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.lev:first-child{border-top:0}
+.lev .tick{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);color:transparent;flex:none}
+.lev.y .tick{background:var(--ok);border-color:var(--ok);color:#fff}
+.lev .tick svg{width:14px;height:14px}
+.lev span{flex:1}
+/* Harta */
+.flow{margin:8px 0 0}
+.fl{display:grid;grid-template-columns:34px 1fr;gap:12px;position:relative;padding-bottom:18px}
+.fl::before{content:"";position:absolute;left:16px;top:34px;bottom:0;width:2px;background:var(--line)}
+.fl:last-child::before{display:none}
+.fl .dot{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.fl.you .dot{background:var(--signal);border-color:var(--signal);color:var(--on-signal)}
+.fl h3{font-size:18px}
+.fl .ctl{margin-top:6px;font-size:14px;color:var(--muted)}
+.fl .ctl b{color:var(--ink);font-weight:600}
+.who{display:grid;gap:6px;margin-top:8px}
+.who button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;min-height:48px}
+.who button b{font:700 20px var(--f-head);min-width:34px}
+.who button span{flex:1;font-size:15px}
+.who button em{font-style:normal;color:var(--muted);font-size:13px;display:block}
+table.loc{width:100%;border-collapse:collapse;font-size:14.5px}
+table.loc td{padding:9px 8px 9px 0;border-top:1px solid var(--line);vertical-align:top}
+table.loc td:first-child{font-weight:600;white-space:nowrap;padding-right:14px}
+table.loc td:last-child{color:var(--muted);word-break:break-word}
+#login{margin:12vh auto 0;width:min(340px,90vw);display:flex;flex-direction:column;gap:12px}
+#login h1{font-size:28px}
+@media(prefers-reduced-motion:no-preference){.item,.btn{transition:transform .12s,box-shadow .12s}}
+</style>
+</head>
+<body>
+<div id="login">
+  <h1>Jarvis · TechFlow</h1>
+  <input id="em" type="email" placeholder="Email" autocomplete="username" value="adrian@techflowtm.ro" aria-label="Email">
+  <input id="pw" type="password" placeholder="Parolă" autocomplete="current-password" aria-label="Parolă">
+  <button class="btn p" id="go">Intră</button>
+  <small id="err" style="color:var(--bad)"></small>
+</div>
+
+<div id="app">
+  <nav id="nav" aria-label="Ecrane">
+    <div id="brand">Jarvis<small>TechFlow · ecosistem</small></div>
+  </nav>
+  <div id="col">
+    <header class="top">
+      <div class="t"><h1 id="h1"></h1><p id="h1p"></p></div>
+      <div id="pulse"><i></i><span>runner</span></div>
+      <button class="ghost" id="out" aria-label="Ieși">Ieși</button>
+    </header>
+    <main>
+      <section id="azi" class="on"></section>
+      <section id="cere"></section>
+      <section id="decis"></section>
+      <section id="avem"></section>
+      <section id="drum"></section>
+      <section id="harta"></section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const db = supabase.createClient('https://bvobmlkeselbugvhfepu.supabase.co','sb_publishable_UbxkA9hsv9c-zHyBZEfNEg_cCcxgLFR',
+  {auth:{persistSession:true,autoRefreshToken:true}});
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ora = d => new Date(d).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const ls = (k,v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k,v); } catch {} };
+const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[]};
+let tab='azi', fTip='toate', q='', fDec='deschise', pagina=25, notaK=null, draft='';
+const prevSeen = Number(ls('jv_seen')) || Date.now() - 864e5;
+
+/* iconițe desenate, un singur stil */
+const P = {azi:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',cere:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  decis:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12l3 3 5-6"/>',avem:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',
+  drum:'<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V10a4 4 0 0 1 4-4h6"/>',harta:'<path d="M9 4l6 2 5-2v14l-5 2-6-2-5 2V6z"/><path d="M9 4v14M15 6v14"/>',
+  check:'<path d="M5 12l4 4 10-10"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',stop:'<rect x="7" y="7" width="10" height="10" rx="1"/>',note:'<path d="M5 4h14v12H9l-4 4z"/>'};
+const ic = n => n==='play' ? '<svg class="i f" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l12 7-12 7z"/></svg>' : `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+
+const TABS = [
+  ['azi','Azi','Ce te așteaptă, ce lucrează acum și ce s-a terminat cât ai lipsit.'],
+  ['cere','Cere','Scrie sau dictează ce vrei făcut. ▶ pornește lucru cât ești plecat.'],
+  ['decis','De decis','Decizii, idei și puncte care așteaptă un cuvânt de la tine.'],
+  ['avem','Ce avem','Agenții și uneltele instalate: ce face fiecare și ce n-ai folosit încă.'],
+  ['drum','Drumul','Unde suntem pe rigla în 9 etape și ce urmează.'],
+  ['harta','Harta','Cine pornește ce, și ce poți controla tu la fiecare pas.']];
+$('nav').insertAdjacentHTML('beforeend', TABS.map(([k,n])=>`<button data-t="${k}" ${k==='azi'?'class="on"':''}>${ic(k)}<span>${n}</span>${k==='decis'||k==='azi'?`<span class="badge" id="b-${k}" hidden></span>`:''}</button>`).join(''));
+
+const TIP = {agent:'Agenți',skill:'Skill-uri',plugin:'Pluginuri',hook:'Hook-uri',mcp:'MCP'};
+const CUM = {agent:'La cerere. Îl chemi tu sau coordonatorul.',skill:'Singur, când sarcina se potrivește descrierii. Sau la cerere.',plugin:'Pachet instalat; aduce skill-uri și hook-uri.',hook:'Mereu, singur. Nu-l chemi și nu-l poți uita.',mcp:'Mâini spre baze de date, browser, documente.'};
+const STARE = {noua:['În coadă',''],preluata:['Lucrează','warn'],in_lucru:['Lucrează','warn'],asteapta_adrian:['Te așteaptă','sig'],gata:['Gata','ok'],esuata:['Eșuat','bad'],
+  done:['Făcut','ok'],todo:['De făcut',''],blocked:['Blocat','bad'],partial:['Parțial','warn'],asteapta:['Te așteaptă','sig'],aprobat:['Aprobat','ok'],respins:['Respins','bad']};
+const pill = s => { const [t,c] = STARE[s] || [s,'']; return `<span class="pill ${c}">${esc(t)}</span>`; };
+const cnt = (a,f) => a.filter(f).length;
+const toast = m => { const t=$('toast'); t.textContent=m; t.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>t.style.display='none',3000); };
+const PCT = () => S.pct.filter(p=>!p.id.startsWith('E-'));
+const ETP = () => S.pct.filter(p=>p.id.startsWith('E-')).sort((a,b)=>a.id.localeCompare(b.id));
+const ultima = (tip,id) => S.act.find(a=>a.item_tip===tip&&a.item_id===id);
+const util = (tip,nume) => S.uti.find(u=>u.tip===tip&&u.nume===nume.replace(/ \(.*\)/,''));
+const runnerOn = () => { const r=S.run.find(x=>x.masina==='windows'); return r && (Date.now()-new Date(r.ultima))<60000 ? r : null; };
+const ascuns = x => ['amana','respinge','aprob'].includes(ultima(x.tip,x.id)?.actiune);
+const raspuns = c => { const m = S.msg.filter(x=>x.cerere_id===c.id&&x.autor==='jarvis').map(x=>x.text).join('\n\n'); return m || c.rezultat || ''; };
+const titluC = c => { const s=c.interpretare?.sarcina_id&&S.sar.find(x=>x.id===c.interpretare.sarcina_id); return s ? s.titlu : c.sursa==='buton' ? c.text_brut.split('\n')[0].slice(0,120) : c.text_brut.slice(0,200); };
+const sursaC = c => c.interpretare?.mod==='autonom' ? 'autonom' : c.sursa==='buton' ? 'buton' : 'scris de tine';
+
+function itemi(){
+  const dec = S.dec.filter(d=>!d.rezolvata).map(d=>({tip:'decizie',id:d.id,titlu:d.titlu,det:d.text,chip:'Decizie',o:0}));
+  const ide = S.idei.map(i=>({tip:'idee',id:i.id,titlu:i.titlu,det:[i.potential&&'Potențial: '+i.potential,i.verdict&&'Verdict: '+i.verdict,i.sursa&&'Sursa: '+i.sursa,i.detalii].filter(Boolean).join('\n\n'),chip:'Idee',o:1}));
+  const pct = PCT().filter(p=>p.stare!=='done').map(p=>({tip:'punct',id:p.id,titlu:p.titlu,det:p.detalii||p.titlu,chip:p.stare==='blocked'?'Punct blocat':'Punct',o:p.stare==='blocked'?4:p.brief==='9-Agenti'?2:3}));
+  return [...dec,...ide,...pct].sort((a,b)=>a.o-b.o);
+}
+
+/* ——— AZI: situația → decizii + aprobări (cuplu) → lucrează → terminat ——— */
+function rAzi(){
+  const ap = S.ap.filter(a=>a.decizie==='asteapta');
+  const dec = itemi().filter(x=>x.tip==='decizie'&&!ascuns(x));
+  const lucru = S.cer.filter(c=>['preluata','in_lucru'].includes(c.stare)), noi = S.cer.filter(c=>c.stare==='noua');
+  const need = ap.length + dec.length;
+  const gata = S.cer.filter(c=>['gata','esuata'].includes(c.stare)&&new Date(c.actualizat_la)>prevSeen).slice(0,6);
+  const ultimele = gata.length ? gata : S.cer.filter(c=>c.stare==='gata').slice(0,4);
+  $('azi').innerHTML =
+  `<div class="hero"><div class="num big ${need?'sig':''}">${need}</div>
+     <div class="txt"><b>${need?'lucruri te așteaptă':'Nimic nu te așteaptă'}</b><span class="hint">${ap.length} aprobări · ${dec.length} decizii deschise</span></div>
+     <button class="btn p" data-go="cere">${ic('cere')}Scrie o cerere</button></div>
+   <div class="two">
+    <div class="blk"><h2>Decizii <span class="c">${dec.length}</span></h2>
+      ${dec.slice(0,3).map(x=>`<div class="item"><div class="h"><b>${esc(x.titlu)}</b></div><div class="m">${esc((x.det||'').split('\n').find(l=>l.trim())||'').slice(0,150)}</div>
+         <div class="row" data-k="${esc(x.tip+'|'+x.id)}"><button class="btn ok" data-a="aprob">${ic('check')}Aprob</button><button class="btn" data-a="fa">Discutăm</button><button class="btn q" data-a="amana">Amână</button></div></div>`).join('') || '<div class="empty">Nicio decizie deschisă.</div>'}
+      ${dec.length>3?`<button class="btn q" data-go="decis">Încă ${dec.length-3} în De decis →</button>`:''}</div>
+    <div class="blk"><h2>Aprobări <span class="c">${ap.length}</span></h2>
+      ${ap.map(a=>`<div class="item"><div class="h"><b>${esc(a.ce)}</b></div><div class="m">${esc(a.detalii)}</div>
+         <div class="row"><button class="btn ok" data-id="${a.id}" data-d="aprobat">${ic('check')}Aprob</button><button class="btn" data-id="${a.id}" data-d="respins">${ic('x')}Resping</button></div></div>`).join('')
+        || '<div class="empty">Nimic de aprobat. Aici apare tot ce e ireversibil: trimis, publicat, plătit.</div>'}</div>
+   </div>
+   <div class="blk"><h2>Lucrează acum <span class="c">${lucru.length}</span></h2>
+     ${lucru.map(c=>`<div class="item"><div class="h"><b>${esc(titluC(c))}</b>${pill(c.stare)}</div><div class="m">${sursaC(c)} · pornit ${ora(c.preluata_la||c.creat_la)}</div></div>`).join('')
+       || `<div class="empty">Nimic nu rulează acum. ${runnerOn()?'Runner-ul e online și așteaptă cereri.':'Runner-ul e oprit: cererile așteaptă în coadă. Se pornește cu PORNESTE-RUNNER.bat pe Windows.'}${noi.length?` ${noi.length} în coadă.`:''}</div>`}</div>
+   <div class="blk"><h2>${gata.length?'Terminat de la ultima ta vizită':'Ultimele terminate'} <span class="c">${ultimele.length}</span></h2>
+     ${ultimele.map(c=>`<details class="item"><summary><div class="h"><b>${esc(titluC(c))}</b>${pill(c.stare)}</div><div class="m">${sursaC(c)} · ${ora(c.actualizat_la)}</div></summary><pre>${esc(raspuns(c))}</pre></details>`).join('')
+       || '<div class="empty">Încă nimic terminat.</div>'}</div>`;
+}
+
+/* ——— CERE: un singur loc pentru tot ce dai de lucru ——— */
+const FRAZE = [
+  ['Ce s-a lucrat săptămâna asta?','Începe cu întrebări: e cea mai rapidă cale să înveți sistemul.'],
+  ['Intervievează-mă: vreau să pornesc un produs nou.',''],
+  ['Scrie întâi specificația pentru: ',''],
+  ['Dă-i agentului financiar: calculul de preț pentru ',''],
+  ['Verifică-ți munca la ultima cerere.',''],
+  ['Fă din asta un skill: ',''],
+  ['Ce ar trebui să automatizăm primul și de ce?','']];
+function rCere(){
+  const auto = S.sar.map(s=>{ const c=S.cer.find(c=>c.interpretare?.sarcina_id===s.id);
+    return `<div class="item"><div class="h"><b>${esc(s.titlu)}</b>${c?pill(c.stare):''}<button class="btn s" data-run="${s.id}" aria-label="Rulează ${esc(s.titlu)}">${ic('play')}Rulează</button></div>
+      <div class="m">${esc(s.descriere)}</div>${s.ultima_rulare?`<div class="m">Ultima rulare: ${ora(s.ultima_rulare)}</div>`:''}
+      ${c&&raspuns(c)?`<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Vezi rezultatul</summary><pre style="white-space:pre-wrap;color:var(--muted);font-size:14px">${esc(raspuns(c))}</pre></details>`:''}</div>`}).join('');
+  const isto = S.cer.filter(c=>c.sursa!=='buton'||!c.interpretare?.sarcina_id).slice(0,30).map(c=>
+    `<div class="item"><div class="h"><b>${esc(titluC(c))}</b>${pill(c.stare)}</div><div class="m">${sursaC(c)} · ${ora(c.creat_la)}</div>${raspuns(c)?`<div class="ans">${esc(raspuns(c))}</div>`:''}</div>`).join('');
+  $('cere').innerHTML =
+  `<form id="f" class="blk" style="margin-top:6px"><label for="t" class="hint">Ce vrei să se facă?</label>
+     <textarea id="t" placeholder="Scrie sau apasă microfonul și vorbește. Cu cât e mai detaliat, cu atât iese mai bine.">${esc(draft)}</textarea>
+     <div class="row"><button class="btn p" type="submit">Trimite</button><button type="button" class="btn" id="mic">${ic('cere')}Dictează</button></div>
+     <div class="chips" aria-label="Fraze care pornesc lucruri">${FRAZE.map(([f,h],i)=>`<button type="button" data-fraza="${i}" ${h?`title="${esc(h)}"`:''}>${esc(f)}</button>`).join('')}</div></form>
+   <div class="blk"><h2>Cât ești plecat <span class="c">${S.sar.length}</span></h2><div class="hint" style="margin:-4px 0 10px">Apeși ▶ și Jarvis lucrează singur: doar cercetare și ciorne. Ce e ireversibil ajunge în Aprobări.</div>${auto}
+     <details class="item"><summary class="hint" style="cursor:pointer">+ Adaugă o sarcină nouă</summary><div style="margin-top:10px"><input id="sT" type="text" placeholder="Titlu scurt"><div style="height:8px"></div><textarea id="sP" placeholder="Ce să facă, cu cuvintele tale"></textarea><div class="row"><button class="btn p" id="sAdd">Adaugă și rulează</button></div></div></details></div>
+   <div class="blk"><h2>Cererile tale <span class="c">${S.cer.length}</span></h2>${isto||'<div class="empty">Nicio cerere încă. Ce trimiți mai sus apare aici cu răspunsul lui Jarvis.</div>'}</div>`;
+  micInit();
+}
+
+/* ——— DE DECIS ——— */
+function rDecis(){
+  const all = itemi(), vis = all.filter(x=>!ascuns(x)), asc = all.filter(ascuns);
+  const l = fDec==='ascunse' ? asc : vis.filter(x=>fDec==='deschise'||{decizii:'decizie',idei:'idee',puncte:'punct'}[fDec]===x.tip);
+  const F = [['deschise','Toate',vis.length],['decizii','Decizii',cnt(vis,x=>x.tip==='decizie')],['idei','Idei',cnt(vis,x=>x.tip==='idee')],['puncte','Puncte',cnt(vis,x=>x.tip==='punct')],['ascunse','Puse deoparte',asc.length]];
+  $('decis').innerHTML =
+  `<details class="item"><summary class="hint" style="cursor:pointer">Ce fac butoanele</summary>
+     <pre><b>Fă-l</b> — Jarvis îl execută acum, cât e reversibil.
+<b>Autonom</b> — lucrează singur, fără întrebări: doar cercetare și ciornă.
+<b>Aprob</b> — pentru decizii: o înregistrează și aplică.
+<b>Amână / Respinge</b> — dispare din listă (o găsești în „Puse deoparte").
+<b>Notă</b> — spui ce vrei; Jarvis o duce la capăt.</pre></details>
+   <div class="seg">${F.map(([k,n,c])=>`<button class="${k===fDec?'on':''}" data-ff="${k}">${n} ${c}</button>`).join('')}</div>`
+  + l.slice(0,pagina).map(x=>{ const u=ultima(x.tip,x.id), k=x.tip+'|'+x.id, d=x.tip==='decizie';
+    return `<details class="item"><summary><div class="h"><b>${esc(x.titlu)}</b><span class="pill">${x.chip}</span>${u?`<span class="pill ${u.actiune==='aprob'?'ok':u.actiune==='respinge'?'bad':''}">${esc(u.actiune)}</span>`:''}</div></summary>
+      <pre>${esc(x.det)}</pre>${u?.nota?`<div class="m">Nota ta: ${esc(u.nota)}</div>`:''}
+      <div class="row" data-k="${esc(k)}">${d?`<button class="btn ok" data-a="aprob">${ic('check')}Aprob</button><button class="btn" data-a="fa">Discutăm</button>`:`<button class="btn p" data-a="fa">Fă-l</button><button class="btn s" data-a="autonom">${ic('play')}Autonom</button>`}
+        <button class="btn q" data-a="amana">Amână</button><button class="btn q" data-a="respinge">Respinge</button><button class="btn q" data-a="nota">${ic('note')}Notă</button></div>
+      ${notaK===k?`<div class="row"><input id="nota" type="text" placeholder="Ce vrei să se facă sau ce decizi…"><button class="btn p" data-a="trimite-nota" data-k="${esc(k)}">Trimite</button></div>`:''}</details>`}).join('')
+  + (l.length>pagina?`<button class="btn" data-mai="1">Încă ${l.length-pagina}…</button>`:'') + (l.length?'':'<div class="empty">Nimic aici.</div>');
+}
+
+/* ——— CE AVEM ——— */
+function rAvem(){
+  const l = S.inv.filter(x=>(fTip==='toate'||x.tip===fTip)&&(!q||(x.nume+' '+(x.descriere||'')).toLowerCase().includes(q)));
+  $('avem').innerHTML =
+  `<input id="q" type="text" placeholder="Caută în ${S.inv.length} elemente…" value="${esc(q)}" aria-label="Caută">
+   <div class="seg">${['toate',...Object.keys(TIP)].map(t=>`<button class="${t===fTip?'on':''}" data-tip="${t}">${t==='toate'?'Toate':TIP[t]} ${t==='toate'?S.inv.length:cnt(S.inv,x=>x.tip===t)}</button>`).join('')}</div>
+   ${fTip!=='toate'?`<div class="hint" style="margin-bottom:10px">${esc(CUM[fTip])}</div>`:''}`
+  + l.map(x=>{ const u=util(x.tip,x.nume), ag=['agent','skill'].includes(x.tip), nm=x.nume.replace(/ \(.*\)/,'');
+    return `<details class="item"><summary><div class="h"><b>${esc(x.nume)}</b><span class="pill">${x.tip}</span>${ag?(u?`<span class="pill ok">folosit ${u.nr}×</span>`:'<span class="pill warn">nefolosit</span>'):''}</div>
+      <div class="m">${esc((x.descriere||'').slice(0,140))}${(x.descriere||'').length>140?'…':''}</div></summary>
+      <div style="margin-top:10px">${esc(x.descriere)}</div>
+      <div class="m" style="margin-top:8px"><b>Pornește:</b> ${esc(CUM[x.tip])}${ag?` Îl chemi cu „${x.tip==='agent'?'dă-i agentului':'folosește skill-ul'} ${esc(nm)}”.`:''}</div>
+      ${u?`<div class="m"><b>Ultima folosire:</b> ${new Date(u.ultima).toLocaleDateString('ro-RO')}</div>`:''}${x.cale?`<div class="m"><b>Fișier:</b> ${esc(x.cale)}</div>`:''}
+      ${x.detalii?`<pre>${esc(x.detalii)}</pre>`:''}
+      ${ag?`<div class="row"><button class="btn p" data-use="${esc(nm)}" data-tp="${x.tip}">Folosește…</button></div>`:''}</details>`}).join('')
+  + (l.length?'':'<div class="empty">Nimic găsit.</div>');
+  const qi=$('q'); qi.oninput = e => { q=e.target.value.toLowerCase(); const p=e.target.selectionStart; rAvem(); const n=$('q'); n.focus(); n.setSelectionRange(p,p); };
+}
+
+/* ——— DRUMUL: rigla în 9 etape + pârghiile tale ——— */
+const LEGATE = {3:['A-04'],4:['A-04'],5:['A-03'],6:['A-01'],8:['A-02','A-21'],9:['A-01','A-06']};
+function rDrum(){
+  const et = ETP(), acum = et.find(e=>e.stare!=='done');
+  const parghii = [
+    ['Scrii o cerere','cere',S.cer.some(c=>['telefon','chat'].includes(c.sursa))],
+    ['Dictezi cu microfonul','cere',!!ls('jv_mic')],
+    ['Decizi ceva în „De decis"','decis',S.act.some(a=>['punct','decizie','idee'].includes(a.item_tip))],
+    ['Aprobi sau respingi o aprobare','azi',S.ap.some(a=>a.decizie!=='asteapta')],
+    ['Pornești o sarcină autonomă ▶','cere',S.act.some(a=>a.item_tip==='sarcina')],
+    ['Chemi un agent sau un skill din „Ce avem"','avem',!!ls('jv_use')]];
+  const nP = parghii.filter(p=>p[2]).length, pc = PCT();
+  $('drum').innerHTML =
+  `<div class="blk" style="margin-top:6px"><h2>Cele 9 etape ale unui sistem AI de firmă <span class="c">${cnt(et,e=>e.stare==='done')} din 9 făcute</span></h2>
+    <div class="ladder">${et.map(e=>{ const n=e.id.slice(2), now=acum&&acum.id===e.id, lg=(LEGATE[n]||[]).map(id=>pc.find(p=>p.id===id)).filter(Boolean);
+      return `<div class="st9 ${e.stare} ${now?'now':''}"><div class="dot">${e.stare==='done'?ic('check').replace('class="i"','class="i" style="width:18px;height:18px"'):n}</div>
+        <div class="b"><b>${esc(e.titlu)}</b> ${pill(e.stare)}${now?' <span class="pill sig">Aici ești</span>':''}<div class="hint">${esc(e.detalii)}</div>
+        ${lg.length?`<div class="hint">Legat de: ${lg.map(p=>`<b>${esc(p.id)}</b> ${pill(p.stare)}`).join(' ')}</div>`:''}
+        ${now?`<div class="row"><button class="btn s" data-etapa="${n}">${ic('play')}Propune primul pas</button></div>`:''}</div></div>`}).join('')}</div></div>
+   <div class="blk"><h2>Pârghiile tale <span class="c">${nP} din ${parghii.length} folosite</span></h2>
+     <div class="hint" style="margin:-4px 0 6px">Ce poți controla aici. Le bifezi pe măsură ce le folosești.</div>
+     <div class="item">${parghii.map(([t,go,y])=>`<div class="lev ${y?'y':''}"><div class="tick">${ic('check')}</div><span>${esc(t)}</span>${y?'':`<button class="btn q" data-go="${go}">Încearcă</button>`}</div>`).join('')}</div></div>
+   <div class="blk"><h2>Cum evoluează sistemul</h2><div class="item">
+     <div class="lev y" style="border:0"><span>Puncte de construcție făcute</span><b class="num">${cnt(pc,p=>p.stare==='done')} / ${pc.length}</b></div>
+     <div class="bar" aria-hidden="true"><i style="width:${pc.length?100*cnt(pc,p=>p.stare==='done')/pc.length:0}%"></i></div>
+     <div class="lev"><span>Decizii rezolvate</span><b class="num">${cnt(S.dec,d=>d.rezolvata)} / ${S.dec.length}</b></div>
+     <div class="lev"><span>Cereri terminate de Jarvis</span><b class="num">${cnt(S.cer,c=>c.stare==='gata')}</b></div>
+     <div class="lev"><span>Agenți și skill-uri chemate vreodată (din ${cnt(S.inv,x=>['agent','skill'].includes(x.tip))})</span><b class="num">${S.uti.length}</b></div></div></div>`;
+}
+
+/* ——— HARTA: cine pornește ce ——— */
+function rHarta(){
+  const n = t => cnt(S.inv,x=>x.tip===t);
+  const who = [['agent','Agenți','pornesc doar la cerere'],['skill','Skill-uri','pornesc singure, când sarcina se potrivește'],['hook','Hook-uri','rulează mereu, singure; nu le poți uita'],['mcp','MCP','mâinile spre baze de date și browser']];
+  $('harta').innerHTML =
+  `<div class="flow" style="margin-top:8px">
+    <div class="fl you"><div class="dot">1</div><div><h3>Tu</h3><div>Scrii, dictezi sau apeși un buton.</div><div class="ctl"><b>Controlezi:</b> ce ceri, când, și cât de autonom (Fă-l / Autonom).</div></div></div>
+    <div class="fl"><div class="dot">2</div><div><h3>Jarvis, coordonatorul</h3><div>Citește cererea, o desparte pe teme, alege cine o face.</div><div class="ctl"><b>Controlezi:</b> îi poți spune direct pe cine vrei: „dă-i agentului financiar…”.</div></div></div>
+    <div class="fl"><div class="dot">3</div><div><h3>Cei care execută</h3><div class="who">${who.map(([t,nm,d])=>`<button data-go="avem:${t}"><b class="num">${n(t)}</b><span>${nm}<em>${d}</em></span></button>`).join('')}</div>
+      <div class="ctl"><b>Controlezi:</b> ce se instalează și ce se folosește. Vezi în „Ce avem" ce nu ai chemat niciodată.</div></div></div>
+    <div class="fl"><div class="dot">4</div><div><h3>Rezultatul</h3><div>Fișiere în TechFlow-OS (marcate <b>VERIFICAT: nu</b>), răspunsul în „Cere", un rând în jurnal.</div><div class="ctl"><b>Controlezi:</b> doar tu pui VERIFICAT: da.</div></div></div>
+    <div class="fl you"><div class="dot">5</div><div><h3>Tu, din nou</h3><div>Aprobi tot ce e ireversibil: trimis, publicat, plătit, conturi, ștergeri.</div><div class="ctl"><b>Controlezi:</b> nimic din astea nu pleacă fără butonul tău din „Aprobări".</div></div></div></div>
+   <div class="blk"><h2>Cât ești plecat</h2><div class="item">Runner-ul de pe Windows ${runnerOn()?'<span class="pill ok">online</span>':'<span class="pill bad">oprit</span>'} preia cererile singur și sincronizează această pagină cu ecosistemul la 20 de minute. Sarcinile ▶ din „Cere" rulează fără tine, doar cercetare și ciorne.</div></div>
+   <div class="blk"><h2>Unde stă fiecare lucru</h2><div class="item"><table class="loc">
+     <tr><td>Legea</td><td>01 TechFlow-OS/CONSTITUTION.md</td></tr>
+     <tr><td>Handbook</td><td>01 TechFlow-OS/5-Knowledge/Domeniu-Constructii/</td></tr>
+     <tr><td>Starea muncii</td><td>01 TechFlow-OS/_HARNESS/features.json</td></tr>
+     <tr><td>Decizii</td><td>01 TechFlow-OS/_HARNESS/DECIZII-PENTRU-ADRIAN.md</td></tr>
+     <tr><td>Idei</td><td>02 Products/00 Idei in Asteptare/RADAR-IDEI.md</td></tr>
+     <tr><td>Agenți, skill-uri</td><td>.claude/ și ~/.claude/</td></tr>
+     <tr><td>Aceste ecrane</td><td>Supabase (jarvis-techflow windows), la zi prin sincronizare</td></tr></table></div></div>`;
+}
+
+/* ——— acțiuni ——— */
+async function cere(text, extra){
+  const {data,error} = await db.from('cereri').insert({sursa:extra?.sursa||'buton',text_brut:text,interpretare:extra?.interp||null}).select().single();
+  if (error) { alert(error.message); return null; }
+  return data;
+}
+async function actiune(k,a,nota){
+  const [tip,id] = k.split('|'), x = itemi().find(i=>i.tip===tip&&i.id===id) || {titlu:id,det:''};
+  const act = a==='trimite-nota' ? 'nota' : a;
+  const {error} = await db.from('actiuni').insert({item_tip:tip,item_id:id,actiune:act,nota:nota||null});
+  if (error) return alert(error.message);
+  const ctx = `[${id}] ${x.titlu}\n\n${(x.det||'').slice(0,1500)}`; let text=null, mod=null;
+  if (a==='fa') text = tip==='decizie' ? `Adrian vrea să discute decizia ${ctx}\n\nPregătește o recomandare fermă (ce alegi, de ce, cost) și pune-o ca răspuns.` : `Execută, în măsura în care e reversibil: ${ctx}`;
+  if (a==='autonom') { text = `Lucrează singur la: ${ctx}\n\nFă doar cercetarea și ciorna (fără cod în produs, fără decizii).`; mod='autonom'; }
+  if (a==='aprob') text = `Adrian APROBĂ decizia ${ctx}\n\nÎnregistreaz-o în 01 TechFlow-OS/_HARNESS/DECIZII-PENTRU-ADRIAN.md cu REZOLVAT ${new Date().toISOString().slice(0,10)} și aplică ce ține de tine.`;
+  if (a==='trimite-nota' && nota) text = `Notă de la Adrian pe ${ctx}\n\nNota: ${nota}\n\nÎnregistreaz-o (pentru decizii, în DECIZII-PENTRU-ADRIAN.md) și acționează pe ea.`;
+  if (text) { await cere(text,{interp:{item_tip:tip,item_id:id,...(mod?{mod}:{})}}); toast(runnerOn()?'Trimis. Jarvis lucrează la el.':'Trimis. Așteaptă pornirea runner-ului.'); }
+  else toast('Notat.');
+  notaK = null; load();
+}
+async function ruleaza(id, s){
+  s = s || S.sar.find(x=>x.id===id);
+  await db.from('actiuni').insert({item_tip:'sarcina',item_id:String(id),actiune:'fa'});
+  await cere(s.prompt,{interp:{mod:'autonom',sarcina_id:s.id}});
+  toast(runnerOn()?'Pornit. Lucrează singur.':'Trimis. Așteaptă pornirea runner-ului.'); load();
+}
+function micInit(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, m = $('mic');
+  if (!SR) { m.hidden = true; return; }
+  let r = null;
+  m.onclick = () => {
+    if (r) { r.stop(); return; }
+    ls('jv_mic','1'); r = new SR(); r.lang='ro-RO'; r.interimResults=true; r.continuous=true;
+    const base = $('t').value;
+    r.onresult = e => { $('t').value = (base+' '+[...e.results].map(x=>x[0].transcript).join('')).trim(); draft = $('t').value; };
+    r.onend = () => { r=null; m.innerHTML = ic('cere')+'Dictează'; };
+    r.onerror = e => { if (e.error!=='aborted') toast('Microfon: '+e.error); };
+    r.start(); m.innerHTML = ic('stop')+'Oprește';
+  };
+}
+
+/* ——— randare, încărcare, navigare ——— */
+function render(){
+  if (notaK && document.activeElement?.id==='nota') return;
+  if (document.activeElement?.id==='t' || document.activeElement?.id==='sT' || document.activeElement?.id==='sP') { rAzi(); rDecis(); rAvem(); rDrum(); rHarta(); badges(); rPulse(); return; }
+  rAzi(); rCere(); rDecis(); rAvem(); rDrum(); rHarta(); badges(); rPulse();
+}
+function badges(){
+  const a = cnt(S.ap,x=>x.decizie==='asteapta'), d = cnt(itemi().filter(x=>x.tip==='decizie'),x=>!ascuns(x));
+  for (const [k,v] of [['azi',a+d],['decis',d]]) { const b=$('b-'+k); if (b) { b.hidden=!v; b.textContent=v; } }
+}
+function rPulse(){ const r=runnerOn(); $('pulse').className = r?'on':''; $('pulse').lastChild.textContent = r ? (r.stare==='lucrez'?'runner lucrează':'runner online') : 'runner oprit'; }
+async function load(){
+  const g = (t,o,n=500) => db.from(t).select('*').order(o[0],{ascending:o[1]}).limit(n).then(r=>r.data||[]);
+  [S.inv,S.pct,S.dec,S.idei,S.cer,S.ap,S.msg,S.act,S.sar,S.uti,S.run] = await Promise.all([
+    g('inventar',['nume',true]),g('puncte',['id',true]),g('decizii',['id',true]),g('idei',['id',true]),g('cereri',['creat_la',false],80),g('aprobari',['creat_la',false],80),
+    g('mesaje',['creat_la',true],300),g('actiuni',['creat_la',false]),g('sarcini_autonome',['titlu',true]),g('utilizare',['nr',false]),g('runner',['masina',true])]);
+  render();
+}
+function goTab(t){
+  const [name,arg] = t.split(':');
+  if (arg && name==='avem') fTip = arg;
+  tab = name;
+  document.querySelectorAll('#nav button,section').forEach(x=>x.classList.remove('on'));
+  document.querySelector(`#nav [data-t="${name}"]`).classList.add('on'); $(name).classList.add('on');
+  const T = TABS.find(x=>x[0]===name); $('h1').textContent = T[1]; $('h1p').textContent = T[2];
+  if (arg) rAvem();
+  window.scrollTo({top:0});
+}
+let tmr; const usor = () => { clearTimeout(tmr); tmr = setTimeout(load,500); };
+async function porneste(){
+  $('login').style.display='none'; $('app').classList.add('on');
+  goTab('azi'); await load();
+  db.channel('jarvis').on('postgres_changes',{event:'*',schema:'public'},usor).subscribe();
+  setInterval(rPulse,15000);
+  const seen = () => ls('jv_seen',String(Date.now())); addEventListener('pagehide',seen); document.addEventListener('visibilitychange',()=>{ if (document.hidden) seen(); });
+}
+$('go').onclick = async () => { const {error} = await db.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value}); if (error) $('err').textContent = error.message; else porneste(); };
+$('pw').onkeydown = e => { if (e.key==='Enter') $('go').click(); };
+$('out').onclick = async () => { await db.auth.signOut(); location.reload(); };
+$('nav').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) goTab(b.dataset.t); };
+document.querySelector('main').addEventListener('input', e => { if (e.target.id==='t') draft = e.target.value; });
+document.querySelector('main').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = $('t').value.trim(); if (!text) return;
+  draft = ''; $('t').value = '';
+  const c = await cere(text,{sursa:'telefon'}); if (!c) return;
+  await db.from('mesaje').insert({autor:'adrian',text,cerere_id:c.id});
+  toast(runnerOn()?'Trimis. Jarvis lucrează.':'Trimis. Așteaptă pornirea runner-ului.'); load();
+});
+document.querySelector('main').addEventListener('click', async e => {
+  const T = e.target, go = T.closest('[data-go]'); if (go) return goTab(go.dataset.go);
+  const tp = T.closest('[data-tip]'); if (tp) { fTip = tp.dataset.tip; return rAvem(); }
+  const ff = T.closest('[data-ff]'); if (ff) { fDec = ff.dataset.ff; pagina = 25; return rDecis(); }
+  if (T.closest('[data-mai]')) { pagina += 25; return rDecis(); }
+  const fr = T.closest('[data-fraza]'); if (fr) { draft = FRAZE[fr.dataset.fraza][0]; $('t').value = draft; $('t').focus(); return; }
+  const use = T.closest('[data-use]'); if (use) { ls('jv_use','1'); draft = `Folosește ${use.dataset.tp==='agent'?'agentul':'skill-ul'} ${use.dataset.use} pentru: `; goTab('cere'); rCere(); $('t').focus(); return; }
+  const run = T.closest('[data-run]'); if (run) return ruleaza(run.dataset.run);
+  const et = T.closest('[data-etapa]'); if (et) { const e9 = ETP().find(x=>x.id==='E-'+et.dataset.etapa); await cere(`Etapa ${et.dataset.etapa} din Drumul ecosistemului („${e9.titlu}”): ${e9.detalii}. Propune primul pas concret, cu cost și durată, și pregătește-l. Nu executa nimic ireversibil.`,{interp:{item_tip:'etapa',item_id:e9.id}}); toast('Trimis. Răspunsul apare în Cere.'); return load(); }
+  if (T.id==='sAdd') { const t=$('sT').value.trim(), p=$('sP').value.trim(); if (!t||!p) return;
+    const {data,error} = await db.from('sarcini_autonome').insert({titlu:t,descriere:p.slice(0,160),prompt:p}).select().single(); if (error) return alert(error.message); return ruleaza(data.id,data); }
+  const b = T.closest('button'); if (!b) return;
+  if (b.dataset.id) { await db.from('aprobari').update({decizie:b.dataset.d,decis_la:new Date().toISOString()}).eq('id',b.dataset.id); return load(); }
+  const a = b.dataset.a; if (a) {
+    const k = b.closest('[data-k]')?.dataset.k || b.dataset.k;
+    if (a==='nota') { notaK = k; return rDecis(); }
+    if (a==='trimite-nota') { const v = $('nota').value.trim(); if (!v) return; return actiune(k,a,v); }
+    return actiune(k,a); }
+});
+$('h1').textContent = TABS[0][1]; $('h1p').textContent = TABS[0][2];
+db.auth.getSession().then(({data}) => { if (data.session) porneste(); });
+</script>
+</body>
+</html>
