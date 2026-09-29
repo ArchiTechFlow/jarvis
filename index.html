@@ -431,10 +431,12 @@ function fmtJarvis(c){
       return `<div class="who">Interpretul → ${esc([...new Set(ex)].join(', ')||'direct')}</div><div class="meta">${esc(rez)}</div>${q?`<div class="ask">${esc(q)}<div class="acts"><button class="btn sm" data-raspunde="${esc(cheieConv(c))}">Răspunde</button></div></div>`:''}`; }
     const who = (p.match(/^\[Au lucrat efectiv: (.*)\]/)||[])[1], t = p.replace(/^\[Au lucrat efectiv: .*\]\n?/,'');
     if (stricat(t)) return `<div class="meta">Răspunsul acesta s-a pierdut (eroare veche de-a mea: am salvat verificarea, nu răspunsul).</div><div class="acts"><button class="btn sec sm" data-reask="${c.id}">Întreabă din nou</button></div>`;
-    const f = k => (t.match(new RegExp('^'+k+':\\s*([\\s\\S]*?)(?=\\n(?:Cine lucrează|Pe scurt|Ce am făcut|De la tine):|$)','m'))||[])[1]?.trim();
-    const cine=f('Cine lucrează'), scurt=f('Pe scurt'), facut=f('Ce am făcut'), dela=f('De la tine');
+    const f = k => (t.match(new RegExp('^'+k+':\\s*([\\s\\S]*?)(?=\\n(?:Cine lucrează|Pe scurt|Ce am făcut|Cum s-au descurcat|Textul propus|De la tine):|$)','m'))||[])[1]?.trim();
+    const cine=f('Cine lucrează'), scurt=f('Pe scurt'), facut=f('Ce am făcut'), cum=f('Cum s-au descurcat'), dela=f('De la tine'), text=(t.match(/Textul propus:\s*```?\n?([\s\S]*?)```/)||[])[1];
     if (!scurt) return `${who?`<div class="who">Au lucrat: ${esc(who)}</div>`:''}<div>${esc(t)}</div>`;
-    return `<div class="who">${esc(who?'Au lucrat: '+who:cine?'Lucrează: '+cine:'Jarvis')}</div><div class="t">${esc(scurt)}</div>${facut?`<div style="margin-top:var(--s2)">${esc(facut)}</div>`:''}
+    return `<div class="who">${esc(who?'Au lucrat: '+who:'Jarvis')}${cine?` — ${esc(cine)}`:''}</div><div class="t">${esc(scurt)}</div>${facut?`<div style="margin-top:var(--s2)">${esc(facut)}</div>`:''}
+      ${text?`<details style="margin-top:var(--s2)"><summary class="meta" style="cursor:pointer">Textul propus</summary><pre>${esc(text.trim())}</pre></details>`:''}
+      ${cum?`<div class="meta" style="margin-top:var(--s2)">Cum s-au descurcat: ${esc(cum)}</div>`:''}
       ${dela&&!/^nimic/i.test(dela)?`<div class="ask">${esc(dela)}<div class="acts"><button class="btn sm" data-raspunde="${esc(cheieConv(c))}">Răspunde</button></div></div>`:''}`; }).join('<hr>') + `<div class="meta" style="margin-top:var(--s2)">${st(c.stare)} · ${ora(c.actualizat_la)}</div>`;
 }
 function rThr(){
