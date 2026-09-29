@@ -71,8 +71,14 @@ details.card[open]>summary .clip{display:none}
 .card .t{font-weight:600}
 .card pre,.card .body{white-space:pre-wrap;word-wrap:break-word;font:400 16px/1.5 var(--f-body);margin:var(--s3) 0 0;color:var(--ink)}
 .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:var(--s2);margin:var(--s3) 0}
-.seg button{min-height:44px;padding:0 var(--s2);border-radius:10px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;text-align:center;line-height:1.2}
-.seg button.on{border-color:var(--navy);color:var(--navy);font-weight:600;background:var(--card)}
+.seg button{min-height:48px;padding:0 var(--s2);border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-align:center;line-height:1.2}
+.seg button.on{border-color:var(--navy);background:var(--navy);color:var(--on-navy);font-weight:600}
+.msg{max-width:min(720px,88%);padding:var(--s3) var(--s4);border-radius:14px;white-space:pre-wrap;word-wrap:break-word}
+.msg.eu{margin-left:auto;background:var(--navy);color:var(--on-navy);border-bottom-right-radius:4px}
+.msg.jv{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg .meta{margin-top:var(--s1)}.msg.eu .meta{color:var(--on-navy);opacity:.75}
+.msg .who{font-size:14px;font-weight:600;color:var(--ok);margin-bottom:var(--s1)}
+.rank{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:14px;background:var(--attn);color:#fff;font:700 14px var(--f-head);margin-right:var(--s2);vertical-align:middle}
 
 #app{display:none}
 #app.on{display:block}
@@ -243,7 +249,7 @@ const EXPL = {
   plugin:['Pachete instalate dintr-un magazin.','Un plugin aduce deodată mai multe skill-uri sau hook-uri cu același prefix (ex. stitch-*, ponytail-*).'],
   hook:['Reguli care rulează singure, mereu, la un moment fix.','Nu depind de memoria nimănui: la pornirea sesiunii, la fiecare mesaj al tău, înainte să scrie peste un fișier, când vrea să spună „gata”. La noi: reinjectează regulile la fiecare tură, blochează suprascrierea unui fișier necitit și blochează „gata” fără o verificare rulată.'],
   mcp:['Mâinile lui Claude spre lumea din afară: baze de date, browser, documente.','La noi există unul: Supabase (baza de date Jarvis). Putem conecta și Gmail (triaj de mail), Google Drive și Calendar, GitHub, un server de fișiere sau n8n pentru automatizări. Fiecare intră după verificare de securitate, iar tot ce atinge bani rămâne doar-citire.']};
-const STARE = {noua:['În coadă',''],preluata:['Lucrează','warn'],in_lucru:['Lucrează','warn'],asteapta_adrian:['Te așteaptă','attn'],gata:['Gata','ok'],esuata:['Eșuat','bad'],
+const STARE = {noua:['În coadă',''],preluata:['Lucrează','warn'],in_lucru:['Lucrează','warn'],asteapta_adrian:['Te întreabă','attn'],gata:['Terminat','ok'],esuata:['Nu a reușit','bad'],anulata:['Anulat',''],
   done:['Făcut','ok'],todo:['De făcut',''],blocked:['Blocat','bad'],partial:['Parțial','warn'],asteapta:['Te așteaptă','attn'],aprobat:['Aprobat','ok'],respins:['Respins','bad']};
 const st = s => { const [t,c] = STARE[s] || [s,'']; return `<span class="st ${c}">${esc(t)}</span>`; };
 const cnt = (a,f) => a.filter(f).length;
@@ -258,7 +264,7 @@ const util = (tip,nume) => S.uti.find(u=>u.tip===tip&&u.nume===nume.replace(/ \(
 const runnerOn = () => { const r=S.run.find(x=>x.masina==='windows'); return r && (Date.now()-new Date(r.ultima))<60000 ? r : null; };
 const ascuns = x => ['amana','respinge','aprob'].includes(ultima(x.tip,x.id)?.actiune);
 const raspuns = c => { const ms = S.msg.filter(x=>x.cerere_id===c.id&&x.autor==='jarvis').map(x=>x.text);
-  const m = c.interpretare?.tip==='bilant' ? ms.sort((a,b)=>b.length-a.length)[0] : ms.join('\n\n'); return m || c.rezultat || ''; };
+  const m = (c.interpretare?.tip==='bilant'||c.interpretare?.sarcina_id) ? ms.sort((a,b)=>b.length-a.length)[0] : ms.join('\n\n'); return m || c.rezultat || ''; };
 const cerP = c => c.interpretare?.proiect || 'ecosistem';
 const titluC = c => { if (c.interpretare?.tip==='bilant') return 'Bilanț '+pjn(cerP(c)); if (c.interpretare?.mesaj) return c.interpretare.mesaj.slice(0,200); const s=c.interpretare?.sarcina_id&&S.sar.find(x=>x.id===c.interpretare.sarcina_id); return s ? s.titlu : c.sursa==='buton' ? c.text_brut.split('\n')[0].slice(0,120) : c.text_brut.slice(0,200); };
 const sursaC = c => c.interpretare?.mod==='autonom' ? 'făcut singur' : c.sursa==='buton' ? 'din buton' : 'scris de tine';
@@ -270,7 +276,7 @@ const prio = () => [...S.prj].sort((a,b)=>(a.prioritate??99)-(b.prioritate??99))
 function itemi(){
   const dec = S.dec.filter(d=>!d.rezolvata).map(d=>({tip:'decizie',id:d.id,proiect:d.proiect||'ecosistem',titlu:d.titlu,det:d.text,chip:'Decizie',o:0}));
   const ide = S.idei.map(i=>({tip:'idee',id:i.id,proiect:i.proiect||'ecosistem',titlu:i.titlu,det:[i.potential&&'Potențial: '+i.potential,i.verdict&&'Verdict: '+i.verdict,i.sursa&&'Sursa: '+i.sursa,i.detalii].filter(Boolean).join('\n\n'),chip:'Idee',o:1}));
-  const pct = PCT().filter(p=>p.stare!=='done').map(p=>({tip:'punct',id:p.id,proiect:p.proiect||'ecosistem',titlu:p.titlu,det:p.detalii||p.titlu,chip:p.stare==='blocked'?'Punct blocat':'Punct',o:p.stare==='blocked'?4:p.brief==='9-Agenti'?2:3}));
+  const pct = PCT().filter(p=>p.stare!=='done').map(p=>({tip:'punct',id:p.id,proiect:p.proiect||'ecosistem',titlu:p.titlu,det:(p.rang?`De ce acum: ${p.de_ce||'-'}\nDepinde de: ${p.depinde||'nimic'}\n\n`:'')+(p.detalii||p.titlu),chip:p.stare==='blocked'?'Punct blocat':'Punct',rang:p.rang,o:p.rang?2+p.rang/100:p.stare==='blocked'?9:5}));
   return [...dec,...ide,...pct].sort((a,b)=>a.o-b.o);
 }
 const vizibile = () => itemi().filter(x=>!ascuns(x));
@@ -278,7 +284,7 @@ const vizibile = () => itemi().filter(x=>!ascuns(x));
 /* ——— componente de conținut ——— */
 function cardItem(x, cuProiect){
   const u = ultima(x.tip,x.id), k = x.tip+'|'+x.id, d = x.tip==='decizie';
-  return `<details class="card" data-oid="d-${esc(k)}"><summary><div class="grow"><div class="t">${esc(x.titlu)}</div>
+  return `<details class="card" data-oid="d-${esc(k)}"><summary><div class="grow"><div class="t">${x.rang?`<span class="rank" title="Ordinea recomandată">${x.rang}</span>`:''}${esc(x.titlu)}</div>
       <div class="meta" style="margin-top:4px">${cuProiect?`<span class="tag">${esc(pjn(x.proiect))}</span> `:''}<span class="tag">${x.chip}</span>${u?` <span class="tag">${{fa:'dat de lucru',amana:'amânat',respinge:'respins',aprob:'aprobat',nota:'cu notă'}[u.actiune]||esc(u.actiune)}</span>`:''}</div>
       <div class="meta clip" style="margin-top:6px">${esc(sumar(x.det))}${(x.det||'').length>220?'…':''}</div></div></summary>
     <pre>${esc(x.det)}</pre>${u?.nota?`<div class="meta" style="margin-top:8px">Nota ta: ${esc(u.nota)}</div>`:''}
@@ -296,11 +302,11 @@ function blocSarcini(scope){
   const l = S.sar.filter(s=>scope==='toate' || (s.proiect||'ecosistem')===scope);
   if (!l.length) return '';
   return `<div class="sec-t"><h2>Ce poate face Jarvis cât ești plecat</h2><span class="c">${l.length}</span></div>
-   <p class="meta" style="margin:0 0 var(--s2)">Apeși „Pornește” și lucrează singur, fără să te întrebe: doar cercetare și ciorne. Ce e ireversibil ajunge la tine, la aprobare. Ai altceva de dat? Scrie în Chat: „cât sunt plecat, fă…”.</p>
+   <p class="meta" style="margin:0 0 var(--s2)">Fiecare card e o treabă pe care Jarvis o face singur, fără să te întrebe: doar citește, analizează și scrie un raport. Nu șterge, nu trimite, nu instalează nimic. „Rulează acum” pornește treaba; rezultatul apare pe card. Altă treabă? Scrie în Chat: „cât sunt plecat, fă…”.</p>
    <div class="grid g2">${l.map(s=>{ const c=S.cer.find(c=>c.interpretare?.sarcina_id===s.id);
      return `<div class="card"><div class="t">${esc(s.titlu)}</div><div class="meta" style="margin-top:4px"><span class="tag">${esc(pjn(s.proiect))}</span> ${c?st(c.stare)+' · ':''}${s.ultima_rulare?'ultima rulare '+ora(s.ultima_rulare):'nerulată'}</div><p class="meta" style="margin:var(--s2) 0 0">${esc(s.descriere)}</p>
        ${c&&raspuns(c)?`<details data-oid="s-${s.id}" style="margin-top:var(--s2)"><summary class="meta" style="cursor:pointer">Vezi rezultatul</summary><pre>${esc(raspuns(c))}</pre></details>`:''}
-       <div class="acts"><button class="btn sec" data-run="${s.id}" aria-label="Pornește ${esc(s.titlu)}">${ic('play')}Pornește</button></div></div>`}).join('')}</div>`;
+       <div class="acts"><button class="btn sec" data-run="${s.id}" aria-label="Rulează ${esc(s.titlu)}">${ic('play')}${c?'Rulează din nou':'Rulează acum'}</button></div></div>`}).join('')}</div>`;
 }
 
 /* ——— ACASĂ ——— */
@@ -393,10 +399,11 @@ function openThread(t){ thread = t; ls('jv_thread','1'); if (t.proiect && t.proi
 function rComp(){
   const p = ctx!=='acasa' && pj(ctx), sc = p ? p.nume : 'tot ecosistemul';
   const qa = thread ? '' : `<div class="qa" aria-label="Ce facem?">
-    <button type="button" data-qa="rest"><b>Unde am rămas</b><span class="meta">${p?'pe '+esc(p.nume):'pe tot ce avem'}</span></button>
-    <button type="button" data-qa="azi"><b>Ce decidem azi</b><span class="meta">deciziile deschise, în ordine</span></button>
-    <button type="button" data-qa="idee"><b>Am un link sau o idee</b><span class="meta">o triez și o pun la locul ei</span></button>
-    <button type="button" data-qa="dez"><b>Dezbatem ceva</b><span class="meta">gândim împreună, fără să execut</span></button></div>`;
+    <button type="button" data-qa="rest"><b>Unde am rămas</b><span class="meta">pregătește întrebarea</span></button>
+    <button type="button" data-qa="azi"><b>Ce decidem azi</b><span class="meta">pregătește întrebarea</span></button>
+    <button type="button" data-qa="idee"><b>Am un link sau o idee</b><span class="meta">pregătește mesajul</span></button>
+    <button type="button" data-qa="dez"><b>Dezbatem ceva</b><span class="meta">pregătește mesajul</span></button></div>
+    <p class="meta" style="margin:var(--s2) 0 0">Aceste butoane doar scriu începutul mesajului. Nu trimit nimic; trimiți tu, cu „Trimite”.</p>`;
   $('cmp').innerHTML =
   `<form id="f" class="card">
      ${thread?`<div class="lbl"><div><div class="meta">Dezbatem</div><div class="t">${esc(thread.titlu)}</div></div><button type="button" class="btn sec sm" data-thread-x="1">Închide discuția</button></div>`
@@ -406,11 +413,15 @@ function rComp(){
      <div class="acts" style="grid-template-columns:1fr 1fr"><button type="button" class="btn sec" id="mic">${ic('mic')}${rec?'Oprește':'Dictează'}</button><button class="btn" type="submit">Trimite</button></div>
      ${thread?`<div class="acts"><button type="button" class="btn sec" data-apuca="1">Apucă-te: execută ce am stabilit</button></div>`:''}${qa}</form>`;
 }
+// un singur fir pe proiect (sau pe punctul dezbătut), ca într-o conversație: tu în dreapta, Jarvis în stânga
+const firul = () => { const k = tkey(thread); return S.cer.filter(c=>c.stare!=='anulata'&&inC(cerP(c))&&(k ? c.interpretare?.thread===k : (c.sursa==='telefon'||c.sursa==='chat')&&!c.interpretare?.thread)).sort((a,b)=>new Date(a.creat_la)-new Date(b.creat_la)).slice(-30); };
 function rThr(){
-  const k = tkey(thread);
-  const l = S.cer.filter(c=>inC(cerP(c))&&(k ? c.interpretare?.thread===k : (c.sursa!=='buton'||(!c.interpretare?.sarcina_id&&c.interpretare?.tip!=='bilant'))&&!c.interpretare?.thread)).slice(0,30);
-  const isto = l.map(c=>`<div class="card"><div class="t">${esc(titluC(c))}</div><div class="meta" style="margin-top:4px">${st(c.stare)} · ${sursaC(c)} · ${ora(c.creat_la)}${ctx==='acasa'&&!k?` · ${esc(pjn(cerP(c)))}`:''}</div>${raspuns(c)?`<div class="ans">${esc(raspuns(c))}</div>`:''}</div>`).join('');
-  setHTML('thr', `<div class="sec-t"><h2>${k?'Discuția':'Conversațiile tale'}</h2><span class="c">${l.length}</span></div><div class="stack">${isto||`<div class="empty">${k?'Începe discuția: scrie sau dictează mai sus.':'Nicio conversație încă. Ce trimiți mai sus apare aici cu răspunsul lui Jarvis.'}</div>`}</div>`);
+  const k = tkey(thread), l = firul();
+  const bule = l.map(c=>{ const r = raspuns(c), who = (r.match(/^\[Au lucrat efectiv: (.*)\]/)||[])[1], txt = r.replace(/^\[Au lucrat efectiv: .*\]\n?/,'');
+    return `<div class="msg eu">${esc(c.interpretare?.mesaj||c.text_brut)}<div class="meta">${ora(c.creat_la)}${ctx==='acasa'&&!k?` · ${esc(pjn(cerP(c)))}`:''}</div></div>`
+     + (txt ? `<div class="msg jv">${who?`<div class="who">Au lucrat: ${esc(who)}</div>`:''}${esc(txt)}<div class="meta">${st(c.stare)} · ${ora(c.actualizat_la)}</div></div>`
+            : `<div class="msg jv"><span class="meta">${st(c.stare)} ${['in_lucru','preluata'].includes(c.stare)?'Jarvis lucrează la asta…':runnerOn()?'Urmează la rând.':'Calculatorul e oprit: așteaptă să-l pornești.'}</span></div>`); }).join('');
+  setHTML('thr', `<div class="sec-t"><h2>${k?'Discuția':'Conversația'}${ctx!=='acasa'&&!k?' pe '+esc(pjn(ctx)):''}</h2><span class="c">${l.length} mesaje</span></div><div class="stack">${bule||`<div class="empty">${k?'Începe discuția: scrie sau dictează mai sus.':'Nicio conversație încă. Scrie mai sus; răspunsul apare aici.'}</div>`}</div>`);
 }
 
 /* ——— DE DECIS ——— */
@@ -541,14 +552,16 @@ async function bilant(id){
   toast(runnerOn()?'Pornit. Bilanțul e gata în câteva minute.':'Trimis. Așteaptă pornirea calculatorului.'); await load(); bilantDialog(id);
 }
 function istoric(){
-  const k = tkey(thread); if (!k) return '';
-  const h = S.cer.filter(c=>c.interpretare?.thread===k&&c.stare==='gata').slice(0,3).reverse().map(c=>`Adrian: ${c.interpretare.mesaj||''}\nJarvis: ${raspuns(c).slice(0,600)}`).join('\n\n');
+  const h = firul().filter(c=>c.stare==='gata'||c.stare==='asteapta_adrian').slice(-3).map(c=>`Adrian: ${c.interpretare?.mesaj||c.text_brut.slice(0,400)}\nJarvis: ${raspuns(c).slice(0,700)}`).join('\n\n');
   return h ? `\n\nDiscuția de până acum:\n${h}` : '';
 }
+let ultimTrimis = {t:'',ts:0};
 async function trimite(text, mod){
+  if (text===ultimTrimis.t && Date.now()-ultimTrimis.ts<60000) return toast('Ai trimis deja exact asta. Aștept răspunsul.');
+  ultimTrimis = {t:text,ts:Date.now()};
   const t = thread;
   const brut = t ? `DISCUȚIE despre ${t.titlu}.\n\nContext:\n${(t.det||'').slice(0,1500)}${istoric()}\n\nAdrian: ${text}\n\n${mod==='apuca'?'Adrian a spus să te apuci: execută ce s-a stabilit în discuție, cât e reversibil.':'Răspunde ca partener de discuție: întreabă, opinează ferm, propune. Nu executa nimic și nu începe lucrul până nu spune „apucă-te”.'}`
-    : (/^\s*c[âa]t sunt plecat/i.test(text) ? `MOD AUTONOM: ${text}` : text);
+    : (/^\s*c[âa]t sunt plecat/i.test(text) ? `MOD AUTONOM: ${text}` : text + istoric());
   const interp = t ? {thread:tkey(t),item_tip:t.tip,item_id:t.id,proiect:t.proiect,mesaj:text} : (/^\s*c[âa]t sunt plecat/i.test(text) ? {mod:'autonom',mesaj:text} : {mesaj:text});
   const c = await cere(brut,{sursa:'telefon',interp}); if (!c) return;
   await db.from('mesaje').insert({autor:'adrian',text,cerere_id:c.id});
@@ -649,8 +662,8 @@ document.querySelector('main').addEventListener('click', async e => {
   const of = T.closest('[data-ofdez]'); if (of) { await cere(`Rezumă-mi oferta ${of.dataset.ofdez} din 03 Clients/00 Ofertare/02 Oferte emise/ (valoare, componente, condiții, stare, ce urmează). Citește folderul ofertei; nu trimite nimic.`,{interp:{proiect:ctx}}); toast('Trimis. Rezumatul apare în Chat.'); return load(); }
   if (T.closest('[data-docdez]')) { const p = pj(ctx); await cere(`Rezumă-mi documentele din folderul clientului «${p.nume}» (${p.surse}): ce conține fiecare, ce e recent, ce lipsește. Citește doar numele și conținutul fișierelor text; nu modifica nimic.`,{interp:{proiect:ctx}}); toast('Trimis. Rezumatul apare în Chat.'); return load(); }
   const qa = T.closest('[data-qa]'); if (qa) { const p = ctx!=='acasa'&&pj(ctx), sc = p?`proiectul ${p.nume}`:'tot ecosistemul';
-    if (qa.dataset.qa==='rest') { await trimite(`Unde am rămas pe ${sc}? Rezumat scurt: ultimul lucru făcut, ce urmează, ce așteaptă decizia mea.`); return; }
-    if (qa.dataset.qa==='azi') { await trimite(`Ce decizii deschise am pe ${sc} și cu care începem azi? Recomandă ordinea, cu motiv.`); return; }
+    if (qa.dataset.qa==='rest') { draft=`Unde am rămas pe ${sc}? Ultimul lucru făcut, ce urmează, ce așteaptă decizia mea.`; $('t').value=draft; $('t').focus(); return toast('Textul e pregătit. Apasă Trimite când vrei.'); }
+    if (qa.dataset.qa==='azi') { draft=`Cu ce decizie de pe ${sc} începem azi, și de ce?`; $('t').value=draft; $('t').focus(); return toast('Textul e pregătit. Apasă Trimite când vrei.'); }
     if (qa.dataset.qa==='idee') { draft='Am un link sau o idee: '; $('t').value=draft; $('t').focus(); return; }
     if (qa.dataset.qa==='dez') { draft='Vreau să dezbatem: '; $('t').value=draft; $('t').focus(); return; } }
   if (T.closest('[data-thread-x]')) { thread = null; rComp(); return rThr(); }
