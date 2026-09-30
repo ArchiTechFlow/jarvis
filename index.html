@@ -407,17 +407,18 @@ function rComp(){
     <button type="button" data-qa="idee"><b>Am un link sau o idee</b><span class="meta">pregătește mesajul</span></button>
     <button type="button" data-qa="dez"><b>Dezbatem ceva</b><span class="meta">pregătește mesajul</span></button></div>
     <p class="meta" style="margin:var(--s2) 0 0">Aceste butoane doar scriu începutul mesajului. Nu trimit nimic; trimiți tu, cu „Trimite”.</p>`;
-  const dez = thread && thread.tip!=='conv';
+  const dez = thread && !['conv','proiect'].includes(thread.tip);
   $('cmp').innerHTML =
   `<form id="f" class="card">
-     ${thread?`<div class="lbl"><div><div class="meta">${dez?'Dezbatem':'Continui conversația'}</div><div class="t">${esc(thread.titlu)}</div></div><button type="button" class="btn sec sm" data-thread-x="1">‹ Toate conversațiile</button></div>`
-       :`<div class="meta">Conversație nouă ${p?`despre <b>${esc(p.nume)}</b>`:'pe tot ecosistemul'}. Interpretul o citește, o împarte pe teme și o dă celui potrivit.</div>`}
+     ${thread?`<div class="lbl"><div><div class="meta">${dez?'Dezbatem':thread.tip==='proiect'?'Conversația permanentă a proiectului':'Continui conversația'}</div><div class="t">${esc(thread.titlu)}</div></div>${ctx==='acasa'||dez?`<button type="button" class="btn sec sm" data-thread-x="1">‹ Toate conversațiile</button>`:''}</div>`
+       :`<div class="meta">Scrie orice. Interpretul alege singur proiectul și îl pune în conversația acelui proiect, cu tot istoricul lui.</div>`}
      <textarea id="t" aria-label="Mesajul tău" placeholder="${dez?'Spune ce crezi, ce te întrebi. Când ești gata: „Apucă-te”.':'Scrie sau dictează. Poți lipi și un link.'}" style="margin-top:var(--s3)">${esc(draft)}</textarea>
      <div class="acts" style="grid-template-columns:1fr 1fr 1fr"><button type="button" class="btn sec" id="mic">${ic('mic')}${rec?'Oprește':'Dictează'}</button><button type="button" class="btn sec del" data-clear="1">Șterge</button><button class="btn" type="submit">Trimite</button></div>
      ${dez?`<div class="acts"><button type="button" class="btn sec" data-apuca="1">Apucă-te: execută ce am stabilit</button></div>`:''}${qa}</form>`;
 }
 // conversații: fiecare mesaj nou începe una; răspunsurile o continuă. Se deschid și se continuă din listă.
-const cheieConv = c => c.interpretare?.thread || 'conv|'+c.id;
+// o conversație permanentă pe proiect; dezbaterile pe o decizie anume au firul lor
+const cheieConv = c => c.interpretare?.thread && !c.interpretare.thread.startsWith('conv|') ? c.interpretare.thread : 'proiect|'+cerP(c);
 const conversatii = () => { const g = {};
   S.cer.filter(c=>c.stare!=='anulata'&&inC(cerP(c))&&(c.sursa==='telefon'||c.sursa==='chat'||c.interpretare?.thread||(c.sursa==='buton'&&!c.interpretare?.sarcina_id&&c.interpretare?.tip!=='bilant'))).forEach(c=>(g[cheieConv(c)] ||= []).push(c));
   return Object.entries(g).map(([k,l])=>{ l.sort((a,b)=>new Date(a.creat_la)-new Date(b.creat_la)); return {k,l,ult:l[l.length-1]}; }).sort((a,b)=>new Date(b.ult.creat_la)-new Date(a.ult.creat_la)); };
@@ -443,17 +444,19 @@ function rThr(){
   if (!thread) {
     const cv = conversatii();
     setHTML('thr', `<div class="sec-t"><h2>Conversațiile ${ctx!=='acasa'?'pe '+esc(pjn(ctx)):'tale'}</h2><span class="c">${cv.length}</span></div><div class="stack">${cv.map(x=>{ const c0=x.l[0], u=x.ult, r=raspuns(u), dela=(r.match(/De la tine:\s*(.*)/)||[])[1]||((r.split('înainte să pornesc:')[1]||'').trim().split('\n')[0]);
-      return `<button class="pj nr" data-conv="${esc(x.k)}"><span class="t">${esc(c0.interpretare?.mesaj||(c0.sursa==="buton"?titluC(c0):c0.text_brut)).slice(0,140)}</span>${st(u.stare)}
+      return `<button class="pj nr" data-conv="${esc(x.k)}"><span class="t">${x.k.startsWith('proiect|')?esc(pjn(x.k.slice(8)))+' <span class="meta">· conversația proiectului</span>':'Dezbatem: '+esc((c0.interpretare?.mesaj||titluC(c0)).slice(0,120))}</span>${st(u.stare)}
         <span class="meta w">${x.l.length} ${x.l.length===1?'mesaj':'mesaje'} · ultimul ${ora(u.creat_la)}${ctx==='acasa'?' · '+esc(pjn(cerP(u))):''}${dela&&u.stare==='asteapta_adrian'?`<br><b style="color:var(--attn)">Te întreabă: ${esc(dela.replace(/^•\s*/,'').slice(0,120))}</b>`:''}</span></button>`; }).join('')||'<div class="empty">Nicio conversație încă. Scrie mai sus și apasă Trimite.</div>'}</div>`);
     return;
   }
   const l = firul(), sc = S.cc.find(x=>x.cheie===tkey(thread));
   if (sc && sc.mesaje?.length) {   // conversația e o sesiune Claude reală: arăt toată sesiunea, inclusiv ce ai continuat în Claude Code
-    const lucru = l.find(c=>['noua','preluata','in_lucru'].includes(c.stare));
+    // mesajele încă neintrate în sesiune (în coadă, în lucru, întrebările Interpretului) apar după transcriere
+    const dupa = l.filter(c=>new Date(c.creat_la) > new Date(sc.actualizat_la));
+    const lucru = null;
     const bule = sc.mesaje.map(m=>m.cine==='adrian'
       ? `<div class="msg eu">${esc(m.text)}<div class="meta">${m.ts?ora(m.ts):''}</div></div>`
       : `<div class="msg jv">${esc(m.text.replace(/^\[Au lucrat efectiv: .*\]\n?/,''))}<div class="meta">Claude${m.ts?' · '+ora(m.ts):''}</div></div>`).join('')
-      + (lucru?`<div class="msg jv"><span class="meta">${st(lucru.stare)} ${lucru.stare==='noua'?(runnerOn()?'Urmează la rând.':'Calculatorul e oprit: așteaptă.'):'Claude lucrează la mesajul tău…'}</span></div>`:'');
+      + dupa.map(c=>`<div class="msg eu">${esc(c.interpretare?.mesaj||(c.sursa==="buton"?titluC(c):c.text_brut))}<div class="meta">${ora(c.creat_la)}</div></div><div class="msg jv">${fmtJarvis(c)}</div>`).join('');
     setHTML('thr', `<div class="card" style="margin-top:var(--s4)"><div class="t">Sesiune Claude reală, cu memorie</div><p class="meta" style="margin:4px 0 0">O continui aici sau în Claude Code pe calculator; ce scrii acolo apare și aici. Comanda, în terminal, în folderul TechFlow:</p><div class="acts" style="grid-template-columns:1fr auto"><input type="text" readonly value="claude --resume ${esc(sc.sesiune)}" id="cmdres"><button class="btn sec sm" data-copy="cmdres">Copiază</button></div></div>
       <div class="sec-t"><h2>${esc(thread.titlu).slice(0,80)}</h2><span class="c">${sc.mesaje.length} mesaje</span></div><div class="stack">${bule}</div>`);
     return;
@@ -632,19 +635,20 @@ async function trimite(text, mod){
   if (text===ultimTrimis.t && Date.now()-ultimTrimis.ts<60000) return toast('Ai trimis deja exact asta. Aștept răspunsul.');
   ultimTrimis = {t:text,ts:Date.now()};
   const t = thread;
-  if (t && t.tip==='conv') {
-    const c = await cere(text + istoric(),{sursa:'telefon',interp:{thread:tkey(t),proiect:t.proiect||(ctx!=='acasa'?ctx:null),mesaj:text}}); if (!c) return;
+  // conversația permanentă a proiectului: sesiunea Claude ține minte singură, nu mai lipim istoricul
+  const pid = t && t.tip==='proiect' ? t.id : t && t.tip==='conv' ? (t.proiect||'ecosistem') : null;
+  if (pid) {
+    const c = await cere(text,{sursa:'telefon',interp:{thread:'proiect|'+pid,proiect:pid,mesaj:text}}); if (!c) return;
     await db.from('mesaje').insert({autor:'adrian',text,cerere_id:c.id});
-    toast(runnerOn()?'Trimis în aceeași conversație.':'Trimis. Calculatorul e oprit: cererea așteaptă în coadă.'); return load();
+    toast(runnerOn()?'Trimis în conversația proiectului.':'Trimis. Calculatorul e oprit: cererea așteaptă în coadă.'); return load();
   }
   const brut = t ? `DISCUȚIE despre ${t.titlu}.\n\nContext:\n${(t.det||'').slice(0,1500)}${istoric()}\n\nAdrian: ${text}\n\n${mod==='apuca'?'Adrian a spus să te apuci: execută ce s-a stabilit în discuție, cât e reversibil.':'Răspunde ca partener de discuție: întreabă, opinează ferm, propune. Nu executa nimic și nu începe lucrul până nu spune „apucă-te”.'}`
-    : (/^\s*c[âa]t sunt plecat/i.test(text) ? `MOD AUTONOM: ${text}` : text + istoric());
+    : (/^\s*c[âa]t sunt plecat/i.test(text) ? `MOD AUTONOM: ${text}` : text);
   const interp = t ? {thread:tkey(t),item_tip:t.tip,item_id:t.id,proiect:t.proiect,mesaj:text} : (/^\s*c[âa]t sunt plecat/i.test(text) ? {mod:'autonom',mesaj:text} : {mesaj:text});
   const c = await cere(brut,{sursa:'telefon',interp}); if (!c) return;
   await db.from('mesaje').insert({autor:'adrian',text,cerere_id:c.id});
-  if (!t) thread = {tip:'conv',id:c.id,titlu:text.slice(0,120),proiect:cerP(c)};
   rComp();
-  toast(runnerOn()?'Trimis. Jarvis lucrează; răspunsul apare mai jos.':'Trimis. Calculatorul e oprit: cererea așteaptă în coadă.'); load();
+  toast(t ? (runnerOn()?'Trimis în discuție.':'Trimis. Calculatorul e oprit: așteaptă în coadă.') : (runnerOn()?'Trimis. Interpretul alege proiectul; îl găsești în conversația acelui proiect.':'Trimis. Calculatorul e oprit: așteaptă în coadă.')); load();
 }
 function micUI(){ const m=$('mic'); if (m) m.innerHTML = ic('mic')+(rec?'Oprește':'Dictează'); }
 function micToggle(){
@@ -684,6 +688,8 @@ function apply(c,t){
   if (c!=='acasa' && !pj(c)) c = 'acasa'; if (!TABS_CTX(c).includes(t)) t = TABS_CTX(c)[0];
   if (c!==ctx) { pagina = 30; thread = thread && thread.proiect===c ? thread : null; ctx = c; rComp(); }
   ctx = c; tab = t;
+  // în Chat-ul unui proiect intri direct în conversația permanentă a proiectului
+  if (tab==='chat' && ctx!=='acasa' && (!thread || thread.tip==='conv')) { thread = {tip:'proiect',id:ctx,titlu:pjn(ctx),proiect:ctx}; rComp(); }
   document.querySelectorAll('section').forEach(x=>x.classList.remove('on')); $('s-'+tab).classList.add('on');
   $('h1').textContent = TT[tab][0]; $('h1p').textContent = TT[tab][1];
   $('back').style.display = ctx==='acasa' ? 'none' : 'inline-flex';
@@ -750,7 +756,7 @@ document.querySelector('main').addEventListener('click', async e => {
   if (T.closest('[data-thread-x]')) { thread = null; rComp(); return rThr(); }
   const cv = T.closest('[data-conv],[data-raspunde]'); if (cv) { const k = cv.dataset.conv||cv.dataset.raspunde, x = conversatii().find(z=>z.k===k); if (!x) return;
     const [tip,...rest] = k.split('|'); const id = rest.join('|'); const c0 = x.l[0];
-    thread = tip==='conv' ? {tip:'conv',id,titlu:(c0.interpretare?.mesaj||c0.text_brut).slice(0,120),proiect:cerP(c0)} : {tip,id,titlu:(itemi().find(i=>i.tip===tip&&i.id===id)||{}).titlu||id,proiect:cerP(c0),det:''};
+    thread = tip==='proiect' ? {tip:'proiect',id,titlu:pjn(id),proiect:id} : tip==='conv' ? {tip:'conv',id,titlu:(c0.interpretare?.mesaj||c0.text_brut).slice(0,120),proiect:cerP(c0)} : {tip,id,titlu:(itemi().find(i=>i.tip===tip&&i.id===id)||{}).titlu||id,proiect:cerP(c0),det:''};
     if (tab!=='chat') go(ctx,'chat'); rComp(); rThr(); const ta=$('t'); if (ta) { ta.focus(); ta.scrollIntoView({block:'center'}); } return; }
   const ra = T.closest('[data-reask]'); if (ra) { const c = S.cer.find(z=>z.id===ra.dataset.reask); if (c) { ultimTrimis={t:'',ts:0}; await trimite(c.interpretare?.mesaj||c.text_brut.split('\n\nDiscuția de până acum')[0]); } return; }
   if (T.closest('[data-apuca]')) { micStop(); const v = $('t').value.trim() || 'Apucă-te.'; draft=''; await trimite(v,'apuca'); return; }
