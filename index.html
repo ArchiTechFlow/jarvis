@@ -29,7 +29,12 @@
 html{color-scheme:light dark}
 :root[data-theme=light]{color-scheme:light}
 :root[data-theme=dark]{color-scheme:dark}
-#tema{min-width:44px;padding:0}
+#mn{min-width:44px;padding:0;font-size:20px;line-height:1}
+.pop{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 60px);right:var(--s4);z-index:20;width:min(280px,calc(100vw - 32px));background:var(--bg);border:1px solid var(--ctl);border-radius:12px;padding:0 var(--s4)}
+.pop.on{display:block}
+.pop .it{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);width:100%;min-height:52px;padding:var(--s3) 0;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer;text-decoration:none}
+.pop .it:last-child{border-bottom:0}
+.pop .it span:last-child{color:var(--muted);font-size:14px}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--f-body);min-height:100dvh}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--f-head);font-weight:700;margin:0;letter-spacing:-.01em}
@@ -229,9 +234,10 @@ dialog .db{padding:var(--s4)}
     <button class="btn sec sm" id="hb" aria-label="Înapoi" title="Înapoi">‹</button><button class="btn sec sm" id="hf" aria-label="Înainte" title="Înainte">›</button><button class="btn sec sm" id="back" aria-label="Acasă">Acasă</button>
     <select id="ctx" aria-label="Proiect"></select>
     <span id="pulse" class="st"><span>runner</span></span>
-    <button class="btn sec sm" id="tema" aria-label="Temă: auto, luminos, întunecat" title="Temă"></button><button class="btn txt sm" id="out">Ieși</button>
+    <button class="btn sec sm" id="mn" aria-label="Meniu" aria-haspopup="true">⋯</button>
   </div></div>
   <nav id="nav" aria-label="Ecrane"></nav>
+  <div class="pop" id="pop" role="menu"></div>
   <div id="col">
     <div id="head"><h1 id="h1"></h1><p class="meta" id="h1p"></p></div>
     <main>
@@ -838,13 +844,21 @@ async function porneste(){
   setInterval(pulsNou,20000);
   const seen = () => ls('jv_seen',String(Date.now())); addEventListener('pagehide',seen); document.addEventListener('visibilitychange',()=>{ if (document.hidden) seen(); });
 }
-addEventListener('hashchange', () => { if ($('app').classList.contains('on')) fromHash(); });
+addEventListener('hashchange', () => { popInchide(); if ($('app').classList.contains('on')) fromHash(); });
 $('go').onclick = async () => { const {error} = await db.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value}); if (error) $('err').textContent = error.message; else porneste(); };
 $('pw').onkeydown = e => { if (e.key==='Enter') $('go').click(); };
-$('out').onclick = async () => { await db.auth.signOut(); location.reload(); };
+const popHTML = () => { const t = TEME.includes(ls('jv_tema')) ? ls('jv_tema') : 'auto', r = runnerOn(); return '<button class="it" role="menuitem" data-mn="tema"><span>Temă</span><span>'+({auto:'Automată',light:'Luminoasă',dark:'Întunecată'}[t])+'</span></button>'
+  + '<div class="it"><span>Programul de pe calculator</span><span>'+(r?(r.stare==='lucrez'?'lucrează':'pornit'):'oprit')+'</span></div>'
+  + '<a class="it" role="menuitem" href="v2.html"><span>Varianta minimală</span><span>›</span></a>'
+  + '<button class="it" role="menuitem" data-mn="out"><span>Ieși</span><span></span></button>'; };
+const popInchide = () => $('pop').classList.remove('on');
+$('mn').onclick = () => { const p = $('pop'); if (p.classList.contains('on')) return popInchide(); p.innerHTML = popHTML(); p.classList.add('on'); };
+$('pop').addEventListener('click', async e => { const b = e.target.closest('[data-mn]'); if (!b) return; e.stopPropagation();
+  if (b.dataset.mn==='tema') { const t = ls('jv_tema') || 'auto'; ls('jv_tema', TEME[(TEME.indexOf(t)+1)%3]); aplicaTema(); $('pop').innerHTML = popHTML(); }
+  if (b.dataset.mn==='out') { await db.auth.signOut(); location.reload(); } });
+document.addEventListener('click', e => { if (!e.target.closest('#pop,#mn')) popInchide(); });
 $('ctx').onchange = e => { if (e.target.value!=='acasa') ls('jv_projused','1'); go(e.target.value, e.target.value==='acasa'?'acasa':'stadiu'); };
 $('back').onclick = () => go('acasa','acasa');
-$('tema').onclick = () => { const t = ls('jv_tema') || 'auto'; ls('jv_tema', TEME[(TEME.indexOf(t)+1)%3]); aplicaTema(); };
 $('hb').onclick = () => history.back(); $('hf').onclick = () => history.forward();
 addEventListener('popstate', e => { if (thread && !(e.state&&e.state.th)) { thread = null; chatNou = false; rComp(); renderAll(); } });
 $('nav').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) go(ctx,b.dataset.t); };
