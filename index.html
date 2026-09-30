@@ -37,6 +37,10 @@ svg.i.f{fill:currentColor;stroke:none}
 #top .ti{font:700 17px var(--f-head);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ib{width:44px;height:44px;display:grid;place-items:center;background:none;border:0;border-radius:50%;cursor:pointer;color:var(--ink)}
 .ib:hover{background:var(--line)}
+/* meniul ⋯: se deschide sub buton, nu duce la altă pagină */
+.pop{display:none;position:fixed;top:calc(52px + env(safe-area-inset-top));right:max(var(--s4),calc((100vw - 720px)/2 + var(--s2)));z-index:8;width:min(300px,calc(100vw - 32px));background:var(--bg);border:1px solid var(--ctl);border-radius:12px;padding:0 var(--s4)}
+.pop.on{display:block}
+.pop .list{border-top:0}.pop .lbl{margin:var(--s3) 0 0}.pop .row:last-child{border-bottom:0}
 #view{max-width:720px;margin:0 auto;padding:var(--s2) var(--s4) 132px}
 
 /* singurul tip de listă: rând */
@@ -103,6 +107,7 @@ dialog .db{padding:var(--s2) var(--s4) var(--s4)}
 
 <div id="app">
   <div id="top"><div class="in"><button class="ib" id="bk" aria-label="Înapoi"></button><div class="ti" id="ti"></div><button class="ib" id="rt" aria-label="Meniu"></button></div></div>
+  <div class="pop" id="pop"></div>
   <div id="view"></div>
   <div id="cmp"><form id="f"><textarea id="t" rows="1" aria-label="Mesajul tău" placeholder="Scrie sau dictează"></textarea><button type="button" id="cmpb" aria-label="Dictează / trimite"></button></form></div>
 </div>
@@ -500,12 +505,15 @@ async function porneste(){
   setInterval(pulsNou,20000);
   const seen = () => ls('jv_seen',String(Date.now())); addEventListener('pagehide',seen); document.addEventListener('visibilitychange',()=>{ if (document.hidden) seen(); });
 }
-addEventListener('hashchange', () => { navCount++; meniu=null; render(); window.scrollTo({top:0}); if (rt().a==='chat'&&rt().rest) requestAnimationFrame(()=>window.scrollTo({top:document.body.scrollHeight})); });
+addEventListener('hashchange', () => { navCount++; meniu=null; popInchide(); render(); window.scrollTo({top:0}); if (rt().a==='chat'&&rt().rest) requestAnimationFrame(()=>window.scrollTo({top:document.body.scrollHeight})); });
 $('go').onclick = async () => { const {error} = await db.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value}); if (error) $('err').textContent = error.message; else porneste(); };
 $('pw').onkeydown = e => { if (e.key==='Enter') $('go').click(); };
 $('dx').innerHTML = ic('x'); $('dx').onclick = () => { meniu=null; $('dlg').close(); };
 $('bk').onclick = () => { const to = $('bk').dataset.to; if (!to) return; if (navCount>0 && history.length>1) history.back(); else location.hash = to; };
-$('rt').onclick = () => { const k = $('rt').dataset.k; if (k==='menu') { meniu='meniu'; rMeniu(); } else if (k==='mai') location.hash = '#/mai'; };
+const popInchide = () => $('pop').classList.remove('on');
+const popToggle = () => { const p=$('pop'); if (p.classList.contains('on')) return popInchide(); p.innerHTML = vMai(); p.classList.add('on'); };
+$('rt').onclick = () => { const k = $('rt').dataset.k; if (k==='menu') { popInchide(); meniu='meniu'; rMeniu(); } else if (k==='mai') popToggle(); };
+document.addEventListener('click', e => { if (!e.target.closest('#pop,#rt')) popInchide(); });
 $('cmpb').onclick = () => { const m = $('cmpb').dataset.mode; if (m==='send') trimiteCaseta(); else if (m==='stop') micStop(); else micToggle(); };
 $('t').addEventListener('input', e => { draft = e.target.value; cmpUI(); });
 $('t').addEventListener('keydown', e => { if (e.key==='Enter' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); trimiteCaseta(); } });
@@ -516,7 +524,7 @@ document.addEventListener('click', async e => {
   const h = T.closest('[data-href]'); if (h) { const c = h.dataset.href; location.hash = c; return; }
   const cx = T.closest('[data-ctx]'); if (cx) { ctx = cx.dataset.ctx; return; }   // urmat de data-href pe același element: ordinea o rezolvă href
   if (T.closest('[data-ina]')) { arataIna = true; return render(); }
-  if (T.closest('[data-tema]')) { const t = ls('jv_tema') || 'auto'; ls('jv_tema', TEME[(TEME.indexOf(t)+1)%3]); aplicaTema(); return render(); }
+  if (T.closest('[data-tema]')) { const t = ls('jv_tema') || 'auto'; ls('jv_tema', TEME[(TEME.indexOf(t)+1)%3]); aplicaTema(); if ($('pop').classList.contains('on')) $('pop').innerHTML = vMai(); return render(); }
   if (T.closest('[data-out]')) { await db.auth.signOut(); location.reload(); return; }
   const ar = T.closest('[data-arh]'); if (ar) { arataArh = ar.dataset.arh==='1'; return render(); }
   const bo = T.closest('[data-bilant-open]'); if (bo) return bilantDialog(bo.dataset.bilantOpen);
