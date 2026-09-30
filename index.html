@@ -150,6 +150,7 @@ const util = (tip,nume) => S.uti.find(u=>u.tip===tip&&u.nume===nume.replace(/ \(
 const raspuns = c => { const ms = S.msg.filter(x=>x.cerere_id===c.id&&x.autor==='jarvis').map(x=>x.text);
   const m = (c.interpretare?.tip==='bilant'||c.interpretare?.sarcina_id) ? ms.sort((a,b)=>b.length-a.length)[0] : ms.join('\n\n'); return m || c.rezultat || ''; };
 const cerP = c => c.interpretare?.proiect || 'ecosistem';
+const titluCurat = c => { const i=c.interpretare||{}; return i.interpret?.titlu || i.titlu || i.interpret?.teme?.[0]?.tema || titluC(c); };
 const titluC = c => { if (c.interpretare?.tip==='bilant') return 'Bilanț '+pjn(cerP(c)); if (c.interpretare?.mesaj) return c.interpretare.mesaj.slice(0,200); const s=c.interpretare?.sarcina_id&&S.sar.find(x=>x.id===c.interpretare.sarcina_id); return s ? s.titlu : c.sursa==='buton' ? c.text_brut.split('\n')[0].slice(0,120) : c.text_brut.slice(0,200); };
 const apP = a => cerP(S.cer.find(c=>c.id===a.cerere_id) || {});
 const PCT = () => S.pct.filter(p=>!p.id.startsWith('E-'));
@@ -182,7 +183,7 @@ const lista = rows => rows.length ? `<div class="list">${rows.join('')}</div>` :
 const lbl = t => `<div class="lbl">${esc(t)}</div>`;
 const rowItem = x => rand(curat(x.titlu), pjn(x.proiect), '', '#/d/'+encodeURIComponent(x.tip+'|'+x.id));
 const rowAp = a => rand(a.ce, pjn(apP(a)), '', '#/a/'+a.id);
-const rowCer = (c, sub) => rand(taie(titluC(c),80), sub, '', '#/chat/'+encodeURIComponent(cheieConv(c)));
+const rowCer = (c, sub) => rand(taie(titluCurat(c),80), sub, '', '#/chat/'+encodeURIComponent(cheieConv(c)));
 
 /* ——— ecrane ——— */
 function vAcasa(){
@@ -195,7 +196,7 @@ function vAcasa(){
   const rowP = p => { return rand(p.nume, '', '', '#/p/'+p.id); };
   const ina = grup('inactive');
   return (!runnerOn() && (lucru.length||S.cer.some(c=>c.stare==='noua')) ? `<div class="meta" style="margin:var(--s2) 0">Calculatorul e oprit; cererile așteaptă.</div>` : '')
-    + (wait.length ? lbl('Te așteaptă')+lista(wait)+(wAll.length>3?lista([rand('Toate ('+wAll.length+')','','','#/toate')]):'') : '')
+    + (wait.length ? `<div class="lbl">Te așteaptă · <span style="color:var(--accent)">${wAll.length}</span></div>`+lista(wait)+(wAll.length>3?lista([rand('Toate ('+wAll.length+')','','','#/toate')]):'') : '')
     + (acum.length ? lbl('Acum')+lista(acum) : '')
     + GRUP.map(([id,nume])=>grup(id).length ? lbl(nume)+lista(grup(id).map(rowP)) : '').join('')
     + (ina.length ? lbl('Inactive')+lista(arataIna ? ina.map(rowP) : [rand('Inactive ('+ina.length+')','','','', 'data-ina="1"')]) : '');
