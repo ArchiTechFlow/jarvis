@@ -238,7 +238,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ora = d => new Date(d).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const ls = (k,v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k,v); } catch {} };
-const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[],prj:[],jur:[],cc:[]};
+const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[],prj:[],jur:[],cc:[],cm:[]};
 let ctx='acasa', tab='acasa', fTip='toate', q='', qg='', fDec='deschise', pagina=30, notaK=null, draft='', rec=null, thread=null, ordP=ls('jv_ord')||'prio';
 const prevSeen = Number(ls('jv_seen')) || Date.now() - 864e5;
 
@@ -430,15 +430,47 @@ function rComp(){
 // fiecare conversație are firul ei: primul mesaj o deschide, răspunsurile tale o continuă (ca în Claude)
 const cheieConv = c => c.interpretare?.thread || 'conv|'+c.id;
 const esteDez = k => /^(decizie|idee|punct|prioritati|proiect)\|/.test(k) && !k.startsWith('proiect|');
+const meta = k => S.cm.find(m=>m.cheie===k) || {};
+let arataArh = false, meniu = null;   // meniu: null | 'meniu' | 'redenumire' | 'mutare' | 'unire' | 'stergere'
 function convTitlu(x){
+  if (meta(x.k).titlu) return meta(x.k).titlu;
   const c0 = x.l[0], i = c0.interpretare||{};
   if (esteDez(x.k)) { const [tip,...r]=x.k.split('|'), id=r.join('|'); return 'Dezbatem: '+((itemi().find(z=>z.tip===tip&&z.id===id)||{}).titlu||i.mesaj||id); }
   return i.interpret?.titlu || i.titlu || (i.mesaj||titluC(c0));
 }
 const conversatii = () => { const g = {};
   S.cer.filter(c=>c.stare!=='anulata'&&inC(cerP(c))&&(c.sursa==='telefon'||c.sursa==='chat'||c.interpretare?.thread||(c.sursa==='buton'&&!c.interpretare?.sarcina_id&&c.interpretare?.tip!=='bilant'))).forEach(c=>(g[cheieConv(c)] ||= []).push(c));
-  return Object.entries(g).map(([k,l])=>{ l.sort((a,b)=>new Date(a.creat_la)-new Date(b.creat_la)); return {k,l,ult:l[l.length-1]}; }).sort((a,b)=>new Date(b.ult.creat_la)-new Date(a.ult.creat_la)); };
+  return Object.entries(g).map(([k,l])=>{ l.sort((a,b)=>new Date(a.creat_la)-new Date(b.creat_la)); return {k,l,ult:l[l.length-1],arh:!!meta(k).arhivat}; }).sort((a,b)=>new Date(b.ult.creat_la)-new Date(a.ult.creat_la)); };
 const firul = () => { const k = tkey(thread); return k ? (conversatii().find(x=>x.k===k)?.l||[]).slice(-30) : []; };
+// ——— gestionarea conversațiilor: redenumește, mută, unește, arhivează, șterge ———
+async function setMeta(k, patch){ const {error} = await db.from('conversatii').upsert({cheie:k,...meta(k),...patch,actualizat_la:new Date().toISOString()}); if (error) alert(error.message); }
+async function patchConv(k, f){ const x = conversatii().find(z=>z.k===k); if (!x) return; for (const c of x.l) await db.from('cereri').update({interpretare:f(c.interpretare||{})}).eq('id',c.id); }
+function rMeniu(){
+  if (!thread || !meniu) return '';
+  const k = tkey(thread), x = conversatii().find(z=>z.k===k);
+  if (meniu==='meniu') return `<div class="card" style="margin-top:var(--s2)"><div class="acts" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:0">
+    <button class="btn sec sm" data-m="redenumire">Redenumește</button><button class="btn sec sm" data-m="mutare">Mută la alt proiect</button><button class="btn sec sm" data-m="unire">Unește cu altă conversație</button>
+    <button class="btn sec sm" data-m="${x?.arh?'dezarhiveaza':'arhiveaza'}">${x?.arh?'Scoate din arhivă':'Arhivează'}</button><button class="btn sec sm del" data-m="stergere">Șterge definitiv</button><button class="btn txt sm" data-m="inchide">Închide</button></div>
+    <p class="meta" style="margin:var(--s2) 0 0">Arhivează o ascunde din listă; o găsești la „Arhivate" și o poți readuce. Șterge o scoate de tot.</p></div>`;
+  if (meniu==='redenumire') return `<div class="card" style="margin-top:var(--s2)"><div class="acts" style="grid-template-columns:1fr auto auto;margin:0"><input id="mTitlu" type="text" value="${esc(thread.titlu)}" aria-label="Titlu nou"><button class="btn sm" data-m="salveaza-titlu">Salvează</button><button class="btn txt sm" data-m="inchide">Renunță</button></div></div>`;
+  if (meniu==='mutare') return `<div class="card" style="margin-top:var(--s2)"><div class="meta">Mută conversația la proiectul:</div><div class="acts" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${S.prj.map(p=>`<button class="btn sec sm" data-mut="${p.id}" ${p.id===thread.proiect?'disabled':''}>${esc(p.nume)}</button>`).join('')}<button class="btn txt sm" data-m="inchide">Renunță</button></div></div>`;
+  if (meniu==='unire') { const alte = conversatii().filter(z=>z.k!==k&&!z.arh);
+    return `<div class="card" style="margin-top:var(--s2)"><div class="meta">Mesajele de aici trec în conversația aleasă. De acum continui acolo.</div><div class="stack" style="margin-top:var(--s2);max-height:260px;overflow:auto">${alte.map(z=>`<button class="citem" data-uneste="${esc(z.k)}"><div class="ct">${esc(convTitlu(z))}</div><div class="cm"><span>${esc(pjn(cerP(z.ult)))}</span><span>${cand(z.ult.creat_la)}</span></div></button>`).join('')||'<div class="empty">Nu există alte conversații.</div>'}</div><div class="acts"><button class="btn txt sm" data-m="inchide">Renunță</button></div></div>`; }
+  if (meniu==='stergere') return `<div class="card" style="margin-top:var(--s2);border-color:var(--bad)"><div class="t">Ștergi definitiv „${esc(thread.titlu)}"?</div><p class="meta" style="margin:4px 0 0">Se șterg ${x?.l.length||0} mesaje și răspunsurile lor. Nu se mai pot recupera. Dacă vrei doar s-o ascunzi, folosește Arhivează.</p><div class="acts"><button class="btn" style="background:var(--bad);border-color:var(--bad)" data-m="sterge-da">Da, șterge definitiv</button><button class="btn sec" data-m="inchide">Renunță</button></div></div>`;
+  return '';
+}
+async function actMeniu(a, v){
+  const k = tkey(thread), x = conversatii().find(z=>z.k===k);
+  if (a==='inchide') { meniu=null; return rChead(); }
+  if (['redenumire','mutare','unire','stergere'].includes(a)) { meniu=a; return rChead(); }
+  if (a==='salveaza-titlu') { const t=$('mTitlu').value.trim(); if (!t) return; await setMeta(k,{titlu:t}); thread.titlu=t; toast('Redenumită.'); }
+  if (a==='arhiveaza') { await setMeta(k,{arhivat:true}); toast('Arhivată. O găsești la „Arhivate".'); thread=null; }
+  if (a==='dezarhiveaza') { await setMeta(k,{arhivat:false}); toast('Readusă în listă.'); }
+  if (a==='mutare' && v) { await patchConv(k, i=>({...i,proiect:v})); thread.proiect=v; toast('Mutată la '+pjn(v)+'.'); }
+  if (a==='unire' && v) { await patchConv(k, i=>({...i,thread:v})); await setMeta(k,{arhivat:true}); const z=conversatii().find(y=>y.k===v); const [tip,...r]=v.split('|'); thread={tip,id:r.join('|'),titlu:z?convTitlu(z):'',proiect:z?cerP(z.ult):null}; toast('Unite. Continui în conversația aleasă.'); }
+  if (a==='sterge-da' && x) { const ids = x.l.map(c=>c.id); await db.from('mesaje').delete().in('cerere_id',ids); await db.from('aprobari').delete().in('cerere_id',ids); await db.from('cereri').delete().in('id',ids); await db.from('conversatii_claude').delete().eq('cheie',k); await db.from('conversatii').delete().eq('cheie',k); toast('Ștearsă.'); thread=null; }
+  meniu=null; LAST.clist=''; LAST.chead=''; await load(); rComp(); rThr();
+}
 const stricat = t => /^(Dovad|Verificare rulat)/i.test(t||'');
 function fmtJarvis(c){
   const r = raspuns(c); if (!r) return `<span class="meta">${st(c.stare)} ${['in_lucru','preluata'].includes(c.stare)?'Jarvis lucrează la asta…':runnerOn()?'Urmează la rând.':'Calculatorul e oprit: așteaptă să-l pornești.'}</span>`;
@@ -458,18 +490,18 @@ function fmtJarvis(c){
 }
 const cand = d => { const x=new Date(d), t=new Date(); return x.toDateString()===t.toDateString() ? x.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'}) : x.toLocaleDateString('ro-RO',{day:'numeric',month:'short'}); };
 function rList(){
-  const cv = conversatii(), k0 = tkey(thread);
+  const toate = conversatii(), k0 = tkey(thread), nArh = toate.filter(x=>x.arh).length, cv = toate.filter(x=>arataArh ? x.arh : !x.arh);
   const item = x => { const u=x.ult, r=raspuns(u).replace(/^\[Au lucrat efectiv: .*\]\n?/,''), asteapta = u.stare==='asteapta_adrian';
     const ultimul = (r.match(/Pe scurt:\s*(.*)/)||[])[1] || (r.split('înainte să pornesc:')[1]||'').trim().split('\n')[0].replace(/^•\s*/,'') || u.interpretare?.mesaj || '';
     return `<button class="citem ${x.k===k0?'on':''}" data-conv="${esc(x.k)}"><div class="ct">${esc(convTitlu(x))}</div><div class="cp">${asteapta?'<b style="color:var(--attn)">Te întreabă: </b>':''}${esc(ultimul.slice(0,120))}</div><div class="cm"><span>${ctx==='acasa'?esc(pjn(cerP(u)))+' · ':''}${x.l.length} ${x.l.length===1?'mesaj':'mesaje'}</span><span>${st(u.stare)} ${cand(u.creat_la)}</span></div></button>`; };
   let corp;
   if (ctx==='acasa') { const g={}; cv.forEach(x=>(g[cerP(x.ult)] ||= []).push(x)); corp = prio().map(p=>p.id).filter(id=>g[id]).map(id=>`<div class="cgrp">${esc(pjn(id))}</div>${g[id].map(item).join('')}`).join(''); }
   else corp = cv.map(item).join('');
-  setHTML('clist', `<button class="btn" data-nou="1">+ Conversație nouă</button>${corp||'<div class="empty" style="margin-top:var(--s2)">Nicio conversație încă.</div>'}`);
+  setHTML('clist', `${arataArh?'<button class="btn sec" data-arh="0">‹ Înapoi la conversații</button><div class="cgrp">Arhivate</div>':'<button class="btn" data-nou="1">+ Conversație nouă</button>'}${corp||`<div class="empty" style="margin-top:var(--s2)">${arataArh?'Nicio conversație arhivată.':'Nicio conversație încă.'}</div>`}${!arataArh&&nArh?`<button class="btn txt sm" data-arh="1" style="margin-top:var(--s2)">Arhivate (${nArh})</button>`:''}`);
 }
 function rChead(){
   const sc = thread && S.cc.find(x=>x.cheie===tkey(thread));
-  setHTML('chead', thread ? `<div class="chd"><button class="btn sec sm back" data-thread-x="1">‹ Conversații</button><div class="grow"><h2>${esc(thread.titlu)}</h2><div class="meta">${esc(pjn(thread.proiect||cerP({interpretare:{}})))}${sc?' · sesiune Claude cu memorie':''}</div></div>${sc?`<button class="btn sec sm" data-copy-cmd="claude --resume ${esc(sc.sesiune)}" title="Continuă în Claude Code: copiază comanda">Claude Code</button>`:''}</div>`
+  setHTML('chead', thread ? `<div class="chd"><button class="btn sec sm back" data-thread-x="1">‹ Conversații</button><div class="grow"><h2>${esc(thread.titlu)}</h2><div class="meta">${esc(pjn(thread.proiect||cerP({interpretare:{}})))}${sc?' · sesiune Claude cu memorie':''}</div></div>${sc?`<button class="btn sec sm" data-copy-cmd="claude --resume ${esc(sc.sesiune)}" title="Continuă în Claude Code: copiază comanda">Claude Code</button>`:''}<button class="btn sec sm" data-m="${meniu?'inchide':'meniu'}" aria-label="Opțiuni conversație">${meniu?'Închide':'Opțiuni'}</button></div>${rMeniu()}`
     : `<div class="chd"><button class="btn sec sm back" data-thread-x="1">‹ Conversații</button><div class="grow"><h2>Conversație nouă</h2><div class="meta">Interpretul alege proiectul și cine lucrează.</div></div></div>`);
 }
 function rThr(){
@@ -742,7 +774,7 @@ function rPulse(){ const r=runnerOn(); $('pulse').className = 'st '+(r?'ok':'bad
 async function load(){
   if (document.activeElement?.id==='nota') return;
   const g = (t,o,n=500) => db.from(t).select('*').order(o[0],{ascending:o[1]}).limit(n).then(r=>r.data||[]);
-  S.jur = await g('jurnal',['ts',false],30); S.cc = await g('conversatii_claude',['actualizat_la',false],100);
+  S.jur = await g('jurnal',['ts',false],30); S.cc = await g('conversatii_claude',['actualizat_la',false],100); S.cm = await g('conversatii',['cheie',true],300);
   [S.inv,S.pct,S.dec,S.idei,S.cer,S.ap,S.msg,S.act,S.sar,S.uti,S.run,S.prj] = await Promise.all([
     g('inventar',['nume',true]),g('puncte',['id',true]),g('decizii',['id',true]),g('idei',['id',true]),g('cereri',['creat_la',false],120),g('aprobari',['creat_la',false],80),
     g('mesaje',['creat_la',true],300),g('actiuni',['creat_la',false]),g('sarcini_autonome',['titlu',true]),g('utilizare',['nr',false]),g('runner',['masina',true]),g('proiecte',['ordine',true])]);
@@ -790,13 +822,17 @@ document.querySelector('main').addEventListener('click', async e => {
     if (qa.dataset.qa==='idee') { draft='Am un link sau o idee: '; $('t').value=draft; $('t').focus(); return; }
     if (qa.dataset.qa==='dez') { draft='Vreau să dezbatem: '; $('t').value=draft; $('t').focus(); return; } }
   const cp = T.closest('[data-copy]'); if (cp) { const i=$(cp.dataset.copy); try { await navigator.clipboard.writeText(i.value); toast('Copiat.'); } catch { i.select(); toast('Selectat: apasă Ctrl+C.'); } return; }
+  const mm = T.closest('[data-m]'); if (mm) return actMeniu(mm.dataset.m);
+  const mt = T.closest('[data-mut]'); if (mt) return actMeniu('mutare', mt.dataset.mut);
+  const un = T.closest('[data-uneste]'); if (un) return actMeniu('unire', un.dataset.uneste);
+  const ar = T.closest('[data-arh]'); if (ar) { arataArh = ar.dataset.arh==='1'; thread=null; meniu=null; rComp(); return rThr(); }
   if (T.closest('[data-thread-x]')) { thread = null; chatNou = false; rComp(); return rThr(); }
   if (T.closest('[data-nou]')) { thread = null; chatNou = true; draft=''; rComp(); rThr(); $('t').focus(); return; }
   const cc = T.closest('[data-copy-cmd]'); if (cc) { try { await navigator.clipboard.writeText(cc.dataset.copyCmd); toast('Comanda e copiată. O lipești în terminal, în folderul TechFlow.'); } catch { toast(cc.dataset.copyCmd); } return; }
   const cv = T.closest('[data-conv],[data-raspunde]'); if (cv) { const k = cv.dataset.conv||cv.dataset.raspunde, x = conversatii().find(z=>z.k===k); if (!x) return;
     const [tip,...rest] = k.split('|'); const id = rest.join('|'); const c0 = x.l[0];
     thread = ['proiect','conv'].includes(tip) ? {tip,id,titlu:convTitlu(x),proiect:cerP(c0)} : {tip,id,titlu:convTitlu(x),proiect:cerP(c0),det:''};
-    chatNou = false; if (tab!=='chat') go(ctx,'chat'); rComp(); rThr(); if (cv.dataset.raspunde) $('t').focus(); return; }
+    meniu = null; chatNou = false; if (tab!=='chat') go(ctx,'chat'); rComp(); rThr(); if (cv.dataset.raspunde) $('t').focus(); return; }
   const ra = T.closest('[data-reask]'); if (ra) { const c = S.cer.find(z=>z.id===ra.dataset.reask); if (c) { ultimTrimis={t:'',ts:0}; await trimite(c.interpretare?.mesaj||c.text_brut.split('\n\nDiscuția de până acum')[0]); } return; }
   if (T.closest('[data-apuca]')) { micStop(); const v = $('t').value.trim() || 'Apucă-te.'; draft=''; await trimite(v,'apuca'); return; }
   const od = T.closest('[data-ord]'); if (od) { ordP = od.dataset.ord; ls('jv_ord',ordP); return rAcasa(); }
