@@ -392,7 +392,7 @@ const ROLURI = [
 const rolDe = x => ROLURI.find(r=>r[2](x))[0];
 function vMai(){
   const t = TEME.includes(ls('jv_tema')) ? ls('jv_tema') : 'auto', r = runnerOn();
-  return lista([rand('Conversații','','','#/chat','data-ctx="acasa"'), rand('Decizii, idei, puncte','','','#/toate','data-ctx="acasa"'), rand('Ce avem','','','#/avem'), rand('Drumul','','','#/drum'), rand('Harta','','','#/harta')])
+  return lista(['<a class="row go" href="index.html"><span><b>Panou complet</b></span><span class="side"></span></a>', rand('Conversații','','','#/chat','data-ctx="acasa"'), rand('Decizii, idei, puncte','','','#/toate','data-ctx="acasa"'), rand('Ce avem','','','#/avem'), rand('Drumul','','','#/drum'), rand('Harta','','','#/harta')])
     + lbl('Setări') + lista([rand('Temă','',TEMA_NUME[t],'','data-tema="1"'), rand('Programul de pe calculator','', r?(r.stare==='lucrez'?'lucrează':'pornit'):'oprit'), rand('Ieși','','','','data-out="1"')]);
 }
 function vAvem(rest){

@@ -34,6 +34,9 @@ html{color-scheme:light dark}
 .pop.on{display:block}
 .pop .it{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);width:100%;min-height:52px;padding:var(--s3) 0;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer;text-decoration:none}
 .pop .it:last-child{border-bottom:0}
+.tbs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);width:100%}
+.tb{min-height:44px;border:1px solid var(--ctl);border-radius:10px;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+.tb.on{background:var(--navy);border-color:var(--navy);color:var(--on-navy);font-weight:600}
 .pop .it span:last-child{color:var(--muted);font-size:14px}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--f-body);min-height:100dvh}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -847,14 +850,14 @@ async function porneste(){
 addEventListener('hashchange', () => { popInchide(); if ($('app').classList.contains('on')) fromHash(); });
 $('go').onclick = async () => { const {error} = await db.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value}); if (error) $('err').textContent = error.message; else porneste(); };
 $('pw').onkeydown = e => { if (e.key==='Enter') $('go').click(); };
-const popHTML = () => { const t = TEME.includes(ls('jv_tema')) ? ls('jv_tema') : 'auto', r = runnerOn(); return '<button class="it" role="menuitem" data-mn="tema"><span>Temă</span><span>'+({auto:'Automată',light:'Luminoasă',dark:'Întunecată'}[t])+'</span></button>'
-  + '<div class="it"><span>Programul de pe calculator</span><span>'+(r?(r.stare==='lucrez'?'lucrează':'pornit'):'oprit')+'</span></div>'
-  + '<a class="it" role="menuitem" href="v2.html"><span>Varianta minimală</span><span>›</span></a>'
-  + '<button class="it" role="menuitem" data-mn="out"><span>Ieși</span><span></span></button>'; };
+const popHTML = () => { const t = TEME.includes(ls('jv_tema')) ? ls('jv_tema') : 'auto', r = runnerOn(), b = (v,n) => '<button class="tb'+(t===v?' on':'')+'" data-mn="tema:'+v+'" role="menuitemradio" aria-checked="'+(t===v)+'">'+n+'</button>';
+  return '<div class="it" style="display:block"><div style="margin-bottom:8px">Temă</div><div class="tbs">'+b('auto','Automat')+b('light','Luminos')+b('dark','Întunecat')+'</div></div>'
+  + '<div class="it"><span>Calculatorul</span><span>'+(r?(r.stare==='lucrez'?'lucrează la o cerere':'pornit'):'oprit: cererile așteaptă')+'</span></div>'
+  + '<button class="it" role="menuitem" data-mn="out"><span>Ieși din cont</span><span></span></button>'; };
 const popInchide = () => $('pop').classList.remove('on');
 $('mn').onclick = () => { const p = $('pop'); if (p.classList.contains('on')) return popInchide(); p.innerHTML = popHTML(); p.classList.add('on'); };
 $('pop').addEventListener('click', async e => { const b = e.target.closest('[data-mn]'); if (!b) return; e.stopPropagation();
-  if (b.dataset.mn==='tema') { const t = ls('jv_tema') || 'auto'; ls('jv_tema', TEME[(TEME.indexOf(t)+1)%3]); aplicaTema(); $('pop').innerHTML = popHTML(); }
+  if (b.dataset.mn.startsWith('tema:')) { ls('jv_tema', b.dataset.mn.slice(5)); aplicaTema(); $('pop').innerHTML = popHTML(); }
   if (b.dataset.mn==='out') { await db.auth.signOut(); location.reload(); } });
 document.addEventListener('click', e => { if (!e.target.closest('#pop,#mn')) popInchide(); });
 $('ctx').onchange = e => { if (e.target.value!=='acasa') ls('jv_projused','1'); go(e.target.value, e.target.value==='acasa'?'acasa':'stadiu'); };
