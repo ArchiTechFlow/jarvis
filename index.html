@@ -139,6 +139,12 @@ section{display:none}section.on{display:block}
   .grid.g2{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
   .grid.g2>:last-child:nth-child(odd){grid-column:1/-1}
 }
+.kpi4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);margin:0 0 var(--s4)}
+.kpi4 button{display:block;text-align:left;padding:var(--s3);border:1px solid var(--line);border-radius:var(--r);background:none;color:var(--ink);cursor:pointer;font:inherit}
+.kpi4 .n{display:block;font:700 26px/1.1 var(--f-head);font-variant-numeric:tabular-nums}
+.kpi4 .l{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.kpi4 button.hot .n{color:var(--attn)}
+svg.spark{vertical-align:middle;color:var(--muted);margin-left:var(--s2)}
 .hero{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap}
 .hero .big{font-size:40px;line-height:1}
 .hero .big.attn{color:var(--attn)}
@@ -254,7 +260,7 @@ const TEME = ['auto','light','dark'], TEMA_ET = {auto:'A',light:'☀',dark:'☾'
 function aplicaTema(){ const t = TEME.includes(ls('jv_tema')) ? ls('jv_tema') : 'auto'; if (t==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); const b = document.getElementById('tema'); if (b) { b.textContent = TEMA_ET[t]; b.setAttribute('aria-label','Temă: '+TEMA_NUME[t]+'. Apasă ca să schimbi.'); b.title = 'Temă: '+TEMA_NUME[t]; } }
 aplicaTema();
 const S = {inv:[],pct:[],dec:[],idei:[],cer:[],ap:[],msg:[],act:[],sar:[],uti:[],run:[],prj:[],jur:[],cc:[],cm:[],fis:[]};
-let ctx='acasa', tab='acasa', fTip='toate', q='', qg='', fDec='deschise', pagina=30, notaK=null, draft='', rec=null, thread=null, ordP=ls('jv_ord')||'prio';
+let amanaK=null, ctx='acasa', tab='acasa', fTip='toate', q='', qg='', fDec='deschise', pagina=30, notaK=null, draft='', rec=null, thread=null, ordP=ls('jv_ord')||'prio';
 const prevSeen = Number(ls('jv_seen')) || Date.now() - 864e5;
 
 /* HTML se schimbă doar când datele s-au schimbat; ce ai deschis rămâne deschis */
@@ -300,7 +306,7 @@ const ETP = () => S.pct.filter(p=>p.id.startsWith('E-')).sort((a,b)=>a.id.locale
 const ultima = (tip,id) => S.act.find(a=>a.item_tip===tip&&a.item_id===id);
 const util = (tip,nume) => S.uti.find(u=>u.tip===tip&&u.nume===nume.replace(/ \(.*\)/,''));
 const runnerOn = () => { const r=S.run.find(x=>x.masina==='windows'); return r && (Date.now()-new Date(r.ultima))<60000 ? r : null; };
-const ascuns = x => ['amana','respinge','aprob'].includes(ultima(x.tip,x.id)?.actiune);
+const ascuns = x => { const u = ultima(x.tip,x.id); if (!u) return false; if (u.actiune==='amana') { const t = Date.parse(u.nota||''); return isNaN(t) || t > Date.now(); } return ['respinge','aprob'].includes(u.actiune); };
 const raspuns = c => { const ms = S.msg.filter(x=>x.cerere_id===c.id&&x.autor==='jarvis').map(x=>x.text);
   const m = (c.interpretare?.tip==='bilant'||c.interpretare?.sarcina_id) ? ms.sort((a,b)=>b.length-a.length)[0] : ms.join('\n\n'); return m || c.rezultat || ''; };
 const cerP = c => c.interpretare?.proiect || 'ecosistem';
@@ -320,8 +326,9 @@ function blocProiecte(){
   const hid = pHid(), vis = S.prj.filter(p=>editA || !hid.includes(p.id)), ordn = ordineProiecte();
   const sorted = l => [...l].sort((a,b)=>ordn.indexOf(a.id)-ordn.indexOf(b.id));
   const rows = l => sorted(l).map(p=>{ const d = cnt(vizibile(),x=>x.tip==='decizie'&&x.proiect===p.id);
-    const nx = `${p.urmatorul_pas&&!/^Nimic/.test(p.urmatorul_pas)?esc(p.urmatorul_pas):'—'}${p.actor?' · '+esc(p.actor):''}${d?`<br>${d} decizii deschise`:''}`;
-    const stc = `<span class="st ${p.stare&&/activ/.test(p.stare)?'ok':''}">${esc(p.stare||'fără stare')}</span>`;
+    const ev0 = eveniment(p)[0];
+    const nx = `${p.urmatorul_pas&&!/^Nimic/.test(p.urmatorul_pas)?esc(p.urmatorul_pas):'—'}${p.actor?' · '+esc(p.actor):''}${d?`<br>${d} decizii deschise`:''}${ev0?`<br>ultima mișcare: ${zileFata(ev0.t)}`:''}`;
+    const stc = `<span class="st ${p.stare&&/activ/.test(p.stare)?'ok':''}">${esc(p.stare||'fără stare')}</span>${spark(p)}`;
     return editA ? regR([`<span class="t">${esc(p.nume)}</span>`, stc, `<button class="btn sec sm" data-hide="${p.id}">${hid.includes(p.id)?'Ascuns · arată':'Vizibil · ascunde'}</button>`])
                  : regR([`<span class="t">${esc(p.nume)}</span>`, stc, `<span class="meta">${nx}</span>`], `data-open="${p.id}"`, true); });
   const tabel = l => reg('minmax(0,2fr) 130px minmax(0,3fr)', ['Proiect','Stare',editA?'Pe Acasă':'Următorul pas'], rows(l));
@@ -332,6 +339,11 @@ function blocProiecte(){
     + (ina.length ? `<details class="card" data-oid="acasa-inactive" style="margin-top:var(--s4)"><summary><div class="grow"><div class="t">Inactive</div><div class="meta">${ina.length} fără activitate recentă sau fără stare · nu apar în recomandări</div></div></summary>${tabel(ina)}</details>` : '')
     + (editA ? '<p class="meta" style="margin-top:var(--s3)">Ce ascunzi aici dispare doar de pe Acasă, doar pe acest dispozitiv. Proiectul rămâne în Jarvis.</p>' : '');
 }
+const zileFata = d => { const z = Math.floor((Date.now()-new Date(d))/864e5); return z<=0 ? 'azi' : z===1 ? 'ieri' : 'acum '+z+' zile'; };
+const spark = p => { const ev = eveniment(p), n = 14, b = new Array(n).fill(0);
+  ev.forEach(e=>{ const z = Math.floor((Date.now()-e.t)/864e5); if (z>=0 && z<n) b[n-1-z]++; });
+  const mx = Math.max(1,...b); if (!b.some(x=>x)) return '';
+  return '<svg class="spark" viewBox="0 0 '+(n*4)+' 14" width="'+(n*4)+'" height="14" role="img" aria-label="activitate pe ultimele 14 zile">'+b.map((v,i)=>v?'<rect x="'+(i*4)+'" y="'+(14-Math.max(2,Math.round(14*v/mx)))+'" width="3" height="'+Math.max(2,Math.round(14*v/mx))+'" fill="currentColor"/>':'').join('')+'</svg>'; };
 const prio = () => [...S.prj].sort((a,b)=>(a.prioritate??99)-(b.prioritate??99));
 
 function itemi(){
@@ -353,7 +365,8 @@ function cardItem(x, cuProiect){
       ${fi&&fi.blocheaza&&!/^fără termen/i.test(fi.blocheaza)?`<div class="meta" style="margin-top:6px"><b>Blochează:</b> ${esc(fi.blocheaza)}</div>`:''}<div class="meta clip" style="margin-top:6px">${fi?esc(fi.pe_scurt):esc(sumar(x.det))+((x.det||'').length>220?'…':'')}</div></div></summary>
     ${fi ? `<div class="fisa"><h3>Problema</h3><p>${esc(fi.problema)}</p><h3>Pe scurt</h3><p>${esc(fi.pe_scurt)}</p><h3>Ce trebuie să înțeleg și ce pot face</h3><p>${esc(fi.ce_pot_face)}</p><h3>Sugestia mea</h3><p>${esc(fi.sugestia)}</p><div class="meta">Sursa: ${esc(fi.sursa||'')}</div></div><details><summary class="meta" style="cursor:pointer;margin-top:var(--s3)">Textul tehnic original</summary><pre>${esc(x.det)}</pre></details>` : `${d?'<div class="meta">Fișă simplă în curs de scriere; mai jos e textul tehnic.</div>':''}<pre>${esc(x.det)}</pre>`}${u?.nota?`<div class="meta" style="margin-top:8px">Nota ta: ${esc(u.nota)}</div>`:''}
     <div class="acts" data-k="${esc(k)}">${d?`<button class="btn" data-a="aprob">${ic('check')}Aprob</button><button class="btn sec" data-a="dezbatem">${ic('chat')}Dezbatem</button>`:`<button class="btn" data-a="dezbatem">${ic('chat')}Dezbatem</button><button class="btn sec" data-a="fa">Fă-l acum</button>`}</div>
-    <div class="acts tri" data-k="${esc(k)}"><button class="btn sec sm" data-a="amana">Amână</button><button class="btn sec sm del" data-a="respinge">Respinge</button><button class="btn sec sm" data-a="nota">Notă</button></div>
+    ${amanaK===k?`<div class="acts tri" data-k="${esc(k)}"><button class="btn sec sm" data-a="amana-d" data-z="1">Mâine</button><button class="btn sec sm" data-a="amana-d" data-z="3">3 zile</button><button class="btn sec sm" data-a="amana-d" data-z="7">7 zile</button></div>`:''}
+    <div class="acts tri" data-k="${esc(k)}"><button class="btn sec sm" data-a="amana">Amână până la…</button><button class="btn sec sm del" data-a="respinge">Respinge</button><button class="btn sec sm" data-a="nota">Notă</button></div>
     ${notaK===k?`<div class="acts"><input id="nota" type="text" placeholder="Ce vrei să se facă sau ce decizi…"><button class="btn" data-a="trimite-nota" data-k="${esc(k)}">Trimite</button></div>`:''}</details>`;
 }
 function cardAp(a, cuProiect){
@@ -391,21 +404,22 @@ function rAcasa(){
   const rez = qg.length>1 ? cautaGlobal(qg) : null;
   const rec = prio().filter(p=>p.urmatorul_pas && !/^Nimic/.test(p.urmatorul_pas) && ['produse','ecosistem'].includes(grupDe(p)) && !pHid().includes(p.id)).slice(0,3);
   setHTML('s-acasa',
-  `<input id="qg" type="text" placeholder="Caută în tot ecosistemul: proiecte, decizii, idei, puncte" aria-label="Caută" value="${esc(qg)}">
+  `<div class="kpi4"><button data-kpi="decis" class="${dec.length?'hot':''}"><span class="n">${dec.length}</span><span class="l">Decizii</span></button><button data-kpi="ap" class="${ap.length?'hot':''}"><span class="n">${ap.length}</span><span class="l">Aprobări</span></button><button data-kpi="lucru"><span class="n">${lucru.length}</span><span class="l">În lucru</span></button><button data-kpi="noi"><span class="n">${gata.length}</span><span class="l">Gata</span></button></div>
+  <input id="qg" type="text" placeholder="Caută în tot ecosistemul: proiecte, decizii, idei, puncte" aria-label="Caută" value="${esc(qg)}">
   ${rez ? `<div class="sec-t"><h2>Rezultate</h2><span class="c">${rez.length}</span></div>${rez.length ? reg('minmax(0,2fr) 150px minmax(0,3fr)',['Rezultat','Proiect','Detaliu'],rez.map(r=>regR([`<span class="t">${esc(r.titlu)}</span>`,`<span class="tag">${r.k==='proiect'?'proiect':esc(pjn(r.p))}</span>`,`<span class="meta">${esc(r.sub||'')}</span>`],`data-open="${esc(r.p)}" data-item="${esc(r.id||'')}"`,true))) : '<div class="empty">Nimic găsit.</div>'}` : `
   <div class="sec-t"><h2>Ce recomand acum</h2><span class="c">în ordinea priorităților</span></div>
   <p class="meta" style="margin:0 0 var(--s2)">Din produse și ecosistem, ce e cel mai aproape de bani. Propunerea mea, tu decizi.</p>
   <div class="grid g2">${rec.map(p=>`<div class="card rec"><div><div class="t">${esc(p.nume)}</div><p class="meta why">${esc(p.motiv||'')}</p><p class="next">${esc(p.urmatorul_pas)}</p>
      <div class="meta" style="margin-top:4px">${esc(p.actor||'')}</div><div class="acts"><button class="btn" data-recdez="${p.id}">${ic('chat')}Dezbatem</button><button class="btn sec" data-open="${p.id}">Deschide proiectul</button></div></div></div>`).join('')}</div>
   <div class="acts"><button class="btn sec" data-priodez="1">Nu sunt de acord cu ordinea: dezbatem</button></div>
-  <div class="hero" style="margin-top:var(--s5)"><div class="num big ${need?'attn':''}">${need}</div><div class="tx"><div class="t" style="font-weight:600">${need?'lucruri te așteaptă':'Nimic nu te așteaptă'}</div><div class="meta">${ap.length} aprobări · ${dec.length} decizii deschise, în ${ordine.length} proiecte</div></div></div>
+  <div class="hero" id="sec-ap" style="margin-top:var(--s5)"><div class="num big ${need?'attn':''}">${need}</div><div class="tx"><div class="t" style="font-weight:600">${need?'lucruri te așteaptă':'Nimic nu te așteaptă'}</div><div class="meta">${ap.length} aprobări · ${dec.length} decizii deschise, în ${ordine.length} proiecte</div></div></div>
   ${ordine.length?ordine.map(id=>{ const ds=grup[id], aps=ap.filter(a=>apP(a)===id);
      return `<div style="margin-top:var(--s4)"><div class="sec-t" style="margin-top:0"><h2>${esc(pjn(id))}</h2><span class="c">${ds.length+aps.length}</span><button class="btn txt sm l" data-open="${id}" data-tab="decis">Toate ›</button></div><div class="grid g2">${aps.map(a=>cardAp(a,false)).join('')}${ds.slice(0,2).map(x=>cardItem(x,false)).join('')}</div></div>`}).join('') : ''}
   ${blocProiecte()}
   ${blocSarcini('toate')}
-  <div class="sec-t"><h2>Lucrează acum</h2><span class="c">${lucru.length}</span></div>
+  <div class="sec-t" id="sec-lucru"><h2>Lucrează acum</h2><span class="c">${lucru.length}</span></div>
   ${lucru.length?`<div class="grid g2">${lucru.map(c=>cardLucru(c,true)).join('')}</div>`:`<div class="empty">Nimic nu rulează acum. ${runnerOn()?'Runner-ul e online și așteaptă cereri.':'Runner-ul e oprit: cererile așteaptă în coadă, până pornești calculatorul.'}${noi?` ${noi} în coadă.`:''}</div>`}
-  <div class="sec-t"><h2>${gata.length?'Terminat de la ultima ta vizită':'Ultimele terminate'}</h2><span class="c">${ultimele.length}</span></div>
+  <div class="sec-t" id="sec-noi"><h2>${gata.length?'Terminat de la ultima ta vizită':'Ultimele terminate'}</h2><span class="c">${ultimele.length}</span></div>
   ${ultimele.length?`<div class="stack">${ultimele.map(c=>cardGata(c,true)).join('')}</div>`:'<div class="empty">Încă nimic terminat.</div>'}`}`);
 }
 
@@ -715,7 +729,7 @@ async function actiune(k,a,nota){
   if (a==='aprob') text = `Adrian APROBĂ decizia ${ctxt}\n\nÎnregistreaz-o în 01 TechFlow-OS/_HARNESS/DECIZII-PENTRU-ADRIAN.md cu REZOLVAT ${new Date().toISOString().slice(0,10)} și aplică ce ține de tine.`;
   if (a==='trimite-nota' && nota) text = `Notă de la Adrian pe ${ctxt}\n\nNota: ${nota}\n\nÎnregistreaz-o (pentru decizii, în DECIZII-PENTRU-ADRIAN.md) și acționează pe ea.`;
   if (text) { const c = await cere(text,{interp:{item_tip:tip,item_id:id,proiect:x.proiect}}); deschideConv(c, x.titlu); toast(runnerOn()?'Trimis. Jarvis lucrează; urmărești aici.':'Trimis. Așteaptă pornirea calculatorului.'); }
-  else toast('Notat.');
+  else toast(a==='amana' ? 'Amânat. Revine în listă la data aleasă.' : 'Notat.');
   notaK = null; load();
 }
 async function ruleaza(id, s){
@@ -844,6 +858,7 @@ document.querySelector('main').addEventListener('submit', async e => {
 });
 document.querySelector('main').addEventListener('click', async e => {
   const T = e.target;
+  const kp = T.closest('[data-kpi]'); if (kp) { const k = kp.dataset.kpi; if (k==='decis') return go(ctx,'decis'); const el = $({ap:'sec-ap',lucru:'sec-lucru',noi:'sec-noi'}[k]); if (el) el.scrollIntoView({block:'start'}); return; }
   const op = T.closest('[data-open]'); if (op) { const id = op.dataset.open; if (id!=='acasa') ls('jv_projused','1'); const it = op.dataset.item; if (it) { OPEN.add('d-'+it); LAST['s-decis']=''; fDec='deschise'; qg=''; go(id,'decis'); } else go(id, op.dataset.tab || 'stadiu'); return; }
   const g = T.closest('[data-go]'); if (g) { const [n,arg] = g.dataset.go.split(':'); if (arg) fTip = arg; return go(ctx,n); }
   const bo = T.closest('[data-bilant-open]'); if (bo) return bilantDialog(bo.dataset.bilantOpen);
@@ -887,6 +902,8 @@ document.querySelector('main').addEventListener('click', async e => {
   const a = b.dataset.a; if (a) {
     const k = b.closest('[data-k]')?.dataset.k || b.dataset.k;
     if (a==='nota') { notaK = k; LAST['s-decis']=''; LAST['s-acasa']=''; LAST['s-stadiu']=''; return renderAll(); }
+    if (a==='amana') { amanaK = amanaK===k ? null : k; LAST['s-decis']=''; LAST['s-acasa']=''; LAST['s-stadiu']=''; return renderAll(); }
+    if (a==='amana-d') { const z = Number(b.dataset.z); amanaK = null; return actiune(k, 'amana', new Date(Date.now() + z*864e5).toISOString()); }
     if (a==='trimite-nota') { const v = $('nota').value.trim(); if (!v) return; return actiune(k,a,v); }
     return actiune(k,a); }
 });
