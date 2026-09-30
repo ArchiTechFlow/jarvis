@@ -189,14 +189,16 @@ const rowCer = (c, sub) => rand(taie(titluCurat(c),80), sub, '', '#/chat/'+encod
 function vAcasa(){
   const ap = S.ap.filter(a=>a.decizie==='asteapta'), dec = vizibile().filter(x=>kind(x)==='hotarat');
   const ask = S.cer.filter(c=>c.stare==='asteapta_adrian' && !meta(cheieConv(c)).arhivat);
-  const wAll = [...ask.map(c=>rowCer(c,'Te întreabă · '+pjn(cerP(c)))), ...ap.map(rowAp), ...dec.map(rowItem)], wait = wAll.slice(0,3);
+  const pd = {}; dec.forEach(x=>(pd[x.proiect] ||= []).push(x));
+  const rowPD = id => rand(pjn(id), pd[id].length+(pd[id].length===1?' decizie':' decizii')+' de hotărât', '', '#/toate', `data-ctx="${id}"`);
+  const wait = [...ask.map(c=>rowCer(c,'Te întreabă · '+cand(c.creat_la))), ...ap.map(rowAp), ...ordineProiecte().filter(id=>pd[id]).map(rowPD)], nWait = ask.length + ap.length + dec.length;
   const lucru = S.cer.filter(c=>['noua','preluata','in_lucru'].includes(c.stare)), gata = S.cer.filter(c=>c.stare==='gata'&&c.interpretare?.tip!=='bilant').slice(0,3);
   const acum = [...lucru.map(c=>rowCer(c,'Lucrează')), ...gata.map(c=>rowCer(c,'Terminat · '+cand(c.actualizat_la)))];
   const grup = id => S.prj.filter(p=>grupDe(p)===id).sort((a,b)=>ordineProiecte().indexOf(a.id)-ordineProiecte().indexOf(b.id));
   const rowP = p => { return rand(p.nume, '', '', '#/p/'+p.id); };
   const ina = grup('inactive');
   return (!runnerOn() && (lucru.length||S.cer.some(c=>c.stare==='noua')) ? `<div class="meta" style="margin:var(--s2) 0">Calculatorul e oprit; cererile așteaptă.</div>` : '')
-    + (wait.length ? `<div class="lbl">Te așteaptă · <span style="color:var(--accent)">${wAll.length}</span></div>`+lista(wait)+(wAll.length>3?lista([rand('Toate ('+wAll.length+')','','','#/toate')]):'') : '')
+    + (wait.length ? `<div class="lbl">Te așteaptă · <span style="color:var(--accent)">${nWait}</span></div>`+lista(wait) : '')
     + (acum.length ? lbl('Acum')+lista(acum) : '')
     + GRUP.map(([id,nume])=>grup(id).length ? lbl(nume)+lista(grup(id).map(rowP)) : '').join('')
     + (ina.length ? lbl('Inactive')+lista(arataIna ? ina.map(rowP) : [rand('Inactive ('+ina.length+')','','','', 'data-ina="1"')]) : '');
