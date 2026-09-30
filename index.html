@@ -104,7 +104,7 @@ details.card[open]>summary .clip{display:none}
 #app.on{display:block}
 #top{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line);padding:var(--s2) var(--s4);padding-top:calc(var(--s2) + env(safe-area-inset-top))}
 #top .r1{display:flex;align-items:center;gap:var(--s2);max-width:1200px;margin:0 auto}
-#back,#brand{display:none}
+#brand{display:none}
 #ctx{flex:1;min-width:0;max-width:460px}
 #pulse{margin-left:auto}
 #col{padding:var(--s4) var(--s4) 100px;max-width:1200px;margin:0 auto}
@@ -208,7 +208,7 @@ dialog .db{padding:var(--s4)}
 <div id="app">
   <div id="top"><div class="r1">
     <span id="brand">Jarvis · TechFlow</span>
-    <button class="btn sec sm" id="back" aria-label="Înapoi la Acasă">‹ Acasă</button>
+    <button class="btn sec sm" id="hb" aria-label="Înapoi" title="Înapoi">‹</button><button class="btn sec sm" id="hf" aria-label="Înainte" title="Înainte">›</button><button class="btn sec sm" id="back" aria-label="Acasă">Acasă</button>
     <select id="ctx" aria-label="Proiect"></select>
     <span id="pulse" class="st"><span>runner</span></span>
     <button class="btn txt sm" id="out">Ieși</button>
@@ -416,7 +416,7 @@ function bilantDialog(id){
 
 /* ——— CHAT: discuție pe un punct, sau conversație pe proiect ——— */
 const tkey = t => t ? t.tip+'|'+t.id : null;
-function openThread(t){ thread = t; ls('jv_thread','1'); if (t.proiect && t.proiect!==ctx) go(t.proiect,'chat'); else go(ctx,'chat'); rComp(); const ta=$('t'); if (ta) ta.focus(); }
+function openThread(t){ thread = t; ls('jv_thread','1'); if (t.proiect && t.proiect!==ctx) go(t.proiect,'chat'); else go(ctx,'chat'); history.pushState({th:1},''); rComp(); const ta=$('t'); if (ta) ta.focus(); }
 // compozitorul stă jos, ca în orice aplicație de mesaje
 let chatNou = false;
 function rComp(){
@@ -797,6 +797,8 @@ $('pw').onkeydown = e => { if (e.key==='Enter') $('go').click(); };
 $('out').onclick = async () => { await db.auth.signOut(); location.reload(); };
 $('ctx').onchange = e => { if (e.target.value!=='acasa') ls('jv_projused','1'); go(e.target.value, e.target.value==='acasa'?'acasa':'stadiu'); };
 $('back').onclick = () => go('acasa','acasa');
+$('hb').onclick = () => history.back(); $('hf').onclick = () => history.forward();
+addEventListener('popstate', e => { if (thread && !(e.state&&e.state.th)) { thread = null; chatNou = false; rComp(); renderAll(); } });
 $('nav').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) go(ctx,b.dataset.t); };
 $('dx').onclick = () => $('dlg').close();
 document.querySelector('main').addEventListener('input', e => { if (e.target.id==='t') draft = e.target.value; if (e.target.id==='q') { q = e.target.value.toLowerCase(); rAvem(); } if (e.target.id==='qg') { qg = e.target.value.trim(); const p=e.target.selectionStart; rAcasa(); const n=$('qg'); n.focus(); n.setSelectionRange(p,p); } });
@@ -826,7 +828,7 @@ document.querySelector('main').addEventListener('click', async e => {
   const mt = T.closest('[data-mut]'); if (mt) return actMeniu('mutare', mt.dataset.mut);
   const un = T.closest('[data-uneste]'); if (un) return actMeniu('unire', un.dataset.uneste);
   const ar = T.closest('[data-arh]'); if (ar) { arataArh = ar.dataset.arh==='1'; thread=null; meniu=null; rComp(); return rThr(); }
-  if (T.closest('[data-thread-x]')) { thread = null; chatNou = false; rComp(); return rThr(); }
+  if (T.closest('[data-thread-x]')) { if (history.state&&history.state.th) return history.back(); thread = null; chatNou = false; rComp(); return rThr(); }
   if (T.closest('[data-nou]')) { thread = null; chatNou = true; draft=''; rComp(); rThr(); $('t').focus(); return; }
   const cc = T.closest('[data-copy-cmd]'); if (cc) { try { await navigator.clipboard.writeText(cc.dataset.copyCmd); toast('Comanda e copiată. O lipești în terminal, în folderul TechFlow.'); } catch { toast(cc.dataset.copyCmd); } return; }
   const cv = T.closest('[data-conv],[data-raspunde]'); if (cv) { const k = cv.dataset.conv||cv.dataset.raspunde, x = conversatii().find(z=>z.k===k); if (!x) return;
