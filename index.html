@@ -37,6 +37,18 @@ svg.i.f{fill:currentColor;stroke:none}
 #top .ti{font:700 17px var(--f-head);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ib{width:44px;height:44px;display:grid;place-items:center;background:none;border:0;border-radius:50%;cursor:pointer;color:var(--ink)}
 .ib:hover{background:var(--line)}
+/* Acasă = un singur lucru mare + trei rânduri. Panoul (plăci) e un ecran separat. */
+.focus{padding:var(--s5) 0 var(--s4)}
+.focus .meta{margin-bottom:var(--s1)}
+.focus h1{font-size:24px;line-height:1.25;margin:0 0 var(--s2)}
+.focus .btn{margin-top:var(--s4)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.tile{display:block;text-align:left;width:100%;padding:var(--s3);border:1px solid var(--line);border-radius:var(--r);background:none;color:var(--ink);cursor:pointer;font:inherit}
+.tile:hover{background:color-mix(in srgb,var(--line) 40%,transparent)}
+.tile b{display:block;font-weight:600}.tile small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.kpi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);margin:var(--s3) 0}
+.kpi div{padding:var(--s3);border:1px solid var(--line);border-radius:var(--r)}
+.kpi .n{font:700 28px/1.1 var(--f-head);display:block}.kpi span.l{color:var(--muted);font-size:14px}
 /* meniul ⋯: se deschide sub buton, nu duce la altă pagină */
 .pop{display:none;position:fixed;top:calc(52px + env(safe-area-inset-top));right:max(var(--s4),calc((100vw - 720px)/2 + var(--s2)));z-index:8;width:min(300px,calc(100vw - 32px));background:var(--bg);border:1px solid var(--ctl);border-radius:12px;padding:0 var(--s4)}
 .pop.on{display:block}
@@ -191,22 +203,46 @@ const rowAp = a => rand(a.ce, pjn(apP(a)), '', '#/a/'+a.id);
 const rowCer = (c, sub) => rand(taie(titluCurat(c),80), sub, '', '#/chat/'+encodeURIComponent(cheieConv(c)));
 
 /* ——— ecrane ——— */
-function vAcasa(){
+const seenC = () => { try { return JSON.parse(ls('jv_seenc')||'[]'); } catch { return []; } };
+function asteapta(){
   const ap = S.ap.filter(a=>a.decizie==='asteapta'), dec = vizibile().filter(x=>kind(x)==='hotarat');
   const ask = S.cer.filter(c=>c.stare==='asteapta_adrian' && !meta(cheieConv(c)).arhivat);
-  const pd = {}; dec.forEach(x=>(pd[x.proiect] ||= []).push(x));
-  const rowPD = id => rand(pjn(id), pd[id].length+(pd[id].length===1?' decizie':' decizii')+' de hotărât', '', '#/toate', `data-ctx="${id}"`);
-  const wait = [...ask.map(c=>rowCer(c,'Te întreabă · '+cand(c.creat_la))), ...ap.map(rowAp), ...ordineProiecte().filter(id=>pd[id]).map(rowPD)], nWait = ask.length + ap.length + dec.length;
-  const lucru = S.cer.filter(c=>['noua','preluata','in_lucru'].includes(c.stare)), gata = S.cer.filter(c=>c.stare==='gata'&&c.interpretare?.tip!=='bilant').slice(0,3);
-  const acum = [...lucru.map(c=>rowCer(c,'Lucrează')), ...gata.map(c=>rowCer(c,'Terminat · '+cand(c.actualizat_la)))];
+  return {ap, dec, ask, n: ap.length + dec.length + ask.length};
+}
+// „Acum": ce ai de făcut primul. Ordinea: întrebare din ultimele 6 ore, aprobare, rezultat nevăzut, întrebare mai veche (48 h), cea mai importantă decizie.
+function focus(){
+  const {ap, dec, ask} = asteapta(), vazute = seenC(), ieri = Date.now() - 48*36e5;
+  const fresh = ask.find(c=>new Date(c.creat_la) > Date.now() - 6*36e5);
+  if (fresh) return {t: titluCurat(fresh), sub: 'Te întreabă · '+pjn(cerP(fresh)), href: '#/chat/'+encodeURIComponent(cheieConv(fresh)), btn: 'Răspunde'};
+  if (ap[0]) return {t: ap[0].ce, sub: 'Aprobare · '+pjn(apP(ap[0])), href: '#/a/'+ap[0].id, btn: 'Deschide'};
+  const gata = S.cer.find(c=>c.stare==='gata' && c.interpretare?.tip!=='bilant' && new Date(c.actualizat_la) > ieri && !vazute.includes(c.id) && !meta(cheieConv(c)).arhivat);
+  if (gata) return {t: titluCurat(gata)+' e gata', sub: 'Terminat · '+cand(gata.actualizat_la), href: '#/chat/'+encodeURIComponent(cheieConv(gata)), btn: 'Vezi rezultatul'};
+  const veche = ask.find(c=>new Date(c.creat_la) > ieri);
+  if (veche) return {t: titluCurat(veche), sub: 'Te întreabă · '+pjn(cerP(veche)), href: '#/chat/'+encodeURIComponent(cheieConv(veche)), btn: 'Răspunde'};
+  if (dec[0]) return {t: curat(dec[0].titlu), sub: 'Decizie · '+pjn(dec[0].proiect), href: '#/d/'+encodeURIComponent(dec[0].tip+'|'+dec[0].id), btn: 'Deschide'};
+  return null;
+}
+function vAcasa(){
+  const w = asteapta(), fo = focus(), nConv = cnt(conversatii(), x=>!x.arh);
+  const lucru = S.cer.filter(c=>['noua','preluata','in_lucru'].includes(c.stare));
+  return (!runnerOn() && (lucru.length||S.cer.some(c=>c.stare==='noua')) ? '<div class="meta" style="margin-top:var(--s2)">Calculatorul e oprit; cererile așteaptă.</div>' : '')
+    + (lucru.length ? '<div class="meta" style="margin-top:var(--s2)">Lucrează acum: '+esc(taie(titluCurat(lucru[0]),60))+(lucru.length>1?' și încă '+(lucru.length-1):'')+'</div>' : '')
+    + (fo ? '<div class="focus"><div class="meta">Acum</div><h1>'+esc(taie(fo.t,90))+'</h1><div class="meta">'+esc(fo.sub)+'</div><button class="btn" data-href="'+esc(fo.href)+'">'+esc(fo.btn)+'</button></div>' : '<div class="focus"><h1>Nimic nu te așteaptă</h1></div>')
+    + lista([rand('Decizii de luat','', String(w.n), '#/asteapta'), rand('Proiecte','', String(S.prj.length), '#/panou'), rand('Conversații','', String(nConv), '#/chat', 'data-ctx="acasa"')]);
+}
+function vAsteapta(){
+  const {ap, dec, ask} = asteapta(), pd = {}; dec.forEach(x=>(pd[x.proiect] ||= []).push(x));
+  const rowPD = id => rand(pjn(id), pd[id].length+(pd[id].length===1?' decizie':' decizii')+' de hotărât', '', '#/toate', 'data-ctx="'+id+'"');
+  const rows = [...ask.map(c=>rowCer(c,'Te întreabă · '+cand(c.creat_la))), ...ap.map(rowAp), ...ordineProiecte().filter(id=>pd[id]).map(rowPD)];
+  return rows.length ? lista(rows) : '<div class="meta" style="margin-top:var(--s3)">Nimic.</div>';
+}
+function vPanou(){
+  const w = asteapta(), lucru = cnt(S.cer, c=>['noua','preluata','in_lucru'].includes(c.stare));
   const grup = id => S.prj.filter(p=>grupDe(p)===id).sort((a,b)=>ordineProiecte().indexOf(a.id)-ordineProiecte().indexOf(b.id));
-  const rowP = p => { return rand(p.nume, '', '', '#/p/'+p.id); };
-  const ina = grup('inactive');
-  return (!runnerOn() && (lucru.length||S.cer.some(c=>c.stare==='noua')) ? `<div class="meta" style="margin:var(--s2) 0">Calculatorul e oprit; cererile așteaptă.</div>` : '')
-    + (wait.length ? `<div class="lbl">Te așteaptă · <span style="color:var(--accent)">${nWait}</span></div>`+lista(wait) : '')
-    + (acum.length ? lbl('Acum')+lista(acum) : '')
-    + GRUP.map(([id,nume])=>grup(id).length ? lbl(nume)+lista(grup(id).map(rowP)) : '').join('')
-    + (ina.length ? lbl('Inactive')+lista(arataIna ? ina.map(rowP) : [rand('Inactive ('+ina.length+')','','','', 'data-ina="1"')]) : '');
+  const tile = p => { const d = cnt(vizibile(), x=>x.tip==='decizie'&&x.proiect===p.id); return '<button class="tile" data-href="#/p/'+p.id+'"><b>'+esc(p.nume)+'</b><small>'+esc(d ? d+(d===1?' decizie':' decizii') : (p.stare||'').replace(/\s*\(.*\)/,''))+'</small></button>'; };
+  const bloc = (t, l) => l.length ? lbl(t)+'<div class="tiles">'+l.map(tile).join('')+'</div>' : '';
+  return '<div class="kpi"><div><span class="n">'+w.n+'</span><span class="l">Te așteaptă</span></div><div><span class="n">'+lucru+'</span><span class="l">Lucrează</span></div></div>'
+    + GRUP.map(([id,nume])=>bloc(nume, grup(id))).join('') + bloc('Inactive', grup('inactive'));
 }
 function vProiect(id){
   const p = pj(id); if (!p) return '';
@@ -462,6 +498,8 @@ function render(){
   if (!(a==='chat' && rest)) thread = null;
   let ti='', html='', back=null, right='mai', cmp=false;
   if (a==='acasa') { ctx='acasa'; ti='Acasă'; html=vAcasa(); cmp=true; }
+  else if (a==='asteapta') { ctx='acasa'; ti='Decizii de luat'; html=vAsteapta(); back='#/'; right=null; }
+  else if (a==='panou') { ctx='acasa'; ti='Proiecte'; html=vPanou(); back='#/'; right=null; }
   else if (a==='p') { ctx=rest; ti=pjn(rest); html=vProiect(rest); back='#/'; cmp=true; }
   else if (a==='d') { ti='Decizie'; html=vItem(rest); back='#/'; right=null; }
   else if (a==='a') { ti='Aprobare'; html=vAprobare(rest); back='#/'; right=null; }
@@ -469,7 +507,8 @@ function render(){
   else if (a==='chat' && !rest) { ti='Conversații'; html=vChat(); back=ctx!=='acasa'?'#/p/'+ctx:'#/'; cmp=true; }
   else if (a==='chat') { const x = conversatii().find(z=>z.k===rest);
     if (!thread || tkey(thread)!==rest) { const [tip,...r]=rest.split('|'), id=r.join('|'); thread = x ? {tip,id,titlu:convTitlu(x),proiect:cerP(x.ult),det:''} : {tip,id,titlu:curat((itemi().find(z=>z.tip===tip&&z.id===id)||{}).titlu||'Conversație nouă'),proiect:ctx!=='acasa'?ctx:null,det:(itemi().find(z=>z.tip===tip&&z.id===id)||{}).det||''}; }
-    ti='Conversație'; html=vThread(); back='#/chat'; right='menu'; cmp=true; }
+    ti='Conversație'; html=vThread(); back='#/chat'; right='menu'; cmp=true;
+    if (x) { const v = seenC(); let ch = false; x.l.forEach(c=>{ if (!v.includes(c.id)) { v.push(c.id); ch = true; } }); if (ch) ls('jv_seenc', JSON.stringify(v.slice(-200))); } }
   else if (a==='mai') { ctx='acasa'; ti='Mai mult'; html=vMai(); back='#/'; right=null; }
   else if (a==='avem') { ti='Ce avem'; html=vAvem(rest); back=rest?'#/avem':'#/mai'; right=null; }
   else if (a==='drum') { ti='Drumul'; html=vDrum(); back='#/mai'; right=null; }
