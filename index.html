@@ -118,7 +118,7 @@ nav#nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;background
 nav#nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;background:none;border:0;color:var(--muted);font-size:14px;cursor:pointer}
 nav#nav button.on{color:var(--navy);font-weight:600}
 nav#nav button.on::before{content:"";position:absolute;top:0;left:20%;right:20%;height:3px;background:var(--navy);border-radius:0 0 3px 3px}
-nav#nav .n{position:absolute;top:6px;left:calc(50% + 4px);min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--attn);color:var(--on-attn);font:700 14px/20px var(--f-head);text-align:center}
+nav#nav .n{position:absolute;top:2px;left:calc(50% + 10px);min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--attn);color:var(--on-attn);font:700 14px/20px var(--f-head);text-align:center}
 section{display:none}section.on{display:block}
 @media(min-width:900px){
   #app.on{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr}
@@ -271,8 +271,8 @@ const NAME = {acasa:'Acasă',stadiu:'Stadiu',chat:'Chat',decis:'De decis',avem:'
 
 const TIP = {agent:'Agenți',skill:'Skill-uri',plugin:'Pluginuri',hook:'Hook-uri',mcp:'MCP'};
 const EXPL = {
-  agent:['Specialiști cărora le dai o lucrare întreagă.','Nu trebuie să alegi tu: când scrii în Chat, coordonatorul (skill-ul „coordonator”) citește cererea și o dă agentului potrivit. Cei 7: financiar, legal, vânzări, marketing, email, plus reviewer (recenzează munca altora fără să vadă discuția, ca să fie obiectiv) și verifier (verifică dovada, nu declarația). Îi poți chema și direct: „dă-i agentului financiar…”.'],
-  skill:['Fișe de lucru gata scrise: cum se face un Excel, un PDF, un design, o cercetare.','Se încarcă singure când cererea se potrivește descrierii. Cele proprii TechFlow (speckit, coordonator) sunt ale noastre; restul vin din pluginuri. Nu alegi tu unul din listă: lista e ca să știi ce ai.'],
+  agent:['Specialiști cărora le dai o lucrare întreagă.','Coordonatorul citește cererea și o dă agentului potrivit. Cei 7: financiar, legal, vânzări, marketing, email, plus reviewer (recenzează munca altora fără să vadă discuția, ca să fie obiectiv) și verifier (verifică dovada, nu declarația). Îi poți chema și direct: „dă-i agentului financiar…”.'],
+  skill:['Fișe de lucru gata scrise: cum se face un Excel, un PDF, un design, o cercetare.','Se încarcă singure când cererea se potrivește descrierii. Cele proprii TechFlow (speckit, coordonator) sunt ale noastre; restul vin din pluginuri.'],
   plugin:['Pachete instalate dintr-un magazin.','Un plugin aduce deodată mai multe skill-uri sau hook-uri cu același prefix (ex. stitch-*, ponytail-*).'],
   hook:['Reguli care rulează singure, mereu, la un moment fix.','Nu depind de memoria nimănui: la pornirea sesiunii, la fiecare mesaj al tău, înainte să scrie peste un fișier, când vrea să spună „gata”. La noi: reinjectează regulile la fiecare tură, blochează suprascrierea unui fișier necitit și blochează „gata” fără o verificare rulată.'],
   mcp:['Mâinile lui Claude spre lumea din afară: baze de date, browser, documente.','La noi există unul: Supabase (baza de date Jarvis). Putem conecta și Gmail (triaj de mail), Google Drive și Calendar, GitHub, un server de fișiere sau n8n pentru automatizări. Fiecare intră după verificare de securitate, iar tot ce atinge bani rămâne doar-citire.']};
@@ -283,6 +283,7 @@ const cnt = (a,f) => a.filter(f).length;
 const toast = m => { const t=$('toast'); t.textContent=m; t.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>t.style.display='none',3500); };
 const pj = id => S.prj.find(p=>p.id===id);
 const pjn = id => pj(id)?.nume || (id||'Ecosistem');
+const taie = (t, n) => { t = t || ''; if (t.length <= n) return t; const c = t.slice(0, n); return c.slice(0, c.lastIndexOf(' ') > 40 ? c.lastIndexOf(' ') : n) + '…'; };
 const reg = (cols, head, rows) => `<div class="reg" style="--cols:${cols}"><div class="reg-h">${head.map(h=>`<span>${esc(h)}</span>`).join('')}<span></span></div>${rows.join('')}</div>`;
 const regR = (cells, attrs = '', nav = false) => `<${nav?'button':'div'} class="reg-r" ${attrs}>${cells.map(c=>`<span class="rc">${c}</span>`).join('')}${nav?'<span class="rc go">›</span>':'<span></span>'}</${nav?'button':'div'}>`;
 const inC = id => ctx==='acasa' || (id||'ecosistem')===ctx;
@@ -581,12 +582,12 @@ function rAvem(){
   if (fTip==='toate' && !q) {
     const g = {}; S.inv.forEach(x=>(g[rolDe(x)] ||= []).push(x));
     const ag = S.inv.filter(x=>['agent','skill'].includes(x.tip)), fol = cnt(ag,x=>util(x.tip,x.nume));
-    setHTML('s-avem', `<div class="card"><div class="t">Echipa ta: ${ag.length} membri, ${fol} au lucrat vreodată.</div><p class="meta" style="margin:var(--s2) 0 0">Nu alegi tu pe cine chemi: când scrii în Chat, Interpretul și coordonatorul aleg. Aici vezi ce roluri ai, cine a lucrat și cine doarme. Cine doarme e fie de folosit, fie de scos: pentru asta e „Audit: ce nu se folosește”.</p></div>
+    setHTML('s-avem', `<div class="card"><div class="t">Echipa ta: ${ag.length} membri, ${fol} au lucrat vreodată.</div><p class="meta" style="margin:var(--s2) 0 0">Cine doarme e fie de folosit, fie de scos: pentru asta e „Audit: ce nu se folosește”.</p></div>
       <input id="q" type="text" placeholder="Caută un membru al echipei…" aria-label="Caută" style="margin-top:var(--s3)"><div id="avl"></div>
       <div class="grid g2" style="margin-top:var(--s3)">${ROLURI.filter(r=>g[r[0]]).map(([k,n,d])=>{ const m=g[k], f=cnt(m,x=>util(x.tip,x.nume));
         return `<details class="card" data-oid="rol-${k}"><summary><div class="grow"><div class="t">${esc(n)}</div><div class="meta" style="margin-top:4px">${m.length} membri${['agent','skill'].includes(m[0].tip)?` · <span class="st ${f?'ok':'warn'}">${f} au lucrat</span>`:''}</div><p class="meta clip" style="margin:6px 0 0">${esc(d)}</p></div></summary>
           <p class="meta">${esc(d)}</p>${reg('minmax(0,3fr) 90px 170px',['Membru','A lucrat','Acțiune'],m.map(x=>{ const u=util(x.tip,x.nume), nm=x.nume.replace(/ \(.*\)/,''), ag=['agent','skill'].includes(x.tip);
-            return regR([`<span class="t">${esc(ROL_AG[x.nume]?ROL_AG[x.nume]+' · ':'')}${esc(x.nume)}</span><br><span class="meta">${esc((x.descriere||'').slice(0,110))}</span>`, ag?`<span class="st ${u?'ok':'warn'}">${u?u.nr+'×':'doarme'}</span>`:'', ag?`<button class="btn sec sm" data-use="${esc(nm)}" data-tp="${x.tip}">Dă-i o treabă</button>`:'']); }))}</details>`; }).join('')}</div>`);
+            return regR([`<span class="t">${esc(ROL_AG[x.nume]?ROL_AG[x.nume]+' · ':'')}${esc(x.nume)}</span><br><span class="meta">${esc(taie(x.descriere,110))}</span>`, ag?`<span class="st ${u?'ok':'warn'}">${u?u.nr+'×':'doarme'}</span>`:'', ag?`<button class="btn sec sm" data-use="${esc(nm)}" data-tp="${x.tip}">Dă-i o treabă</button>`:'']); }))}</details>`; }).join('')}</div>`);
     const qi=$('q'); if (qi) qi.value = q; return;
   }
   const l = S.inv.filter(x=>(fTip==='toate'||x.tip===fTip)&&(!q||(x.nume+' '+(x.descriere||'')).toLowerCase().includes(q)));
@@ -594,7 +595,7 @@ function rAvem(){
   const rez = ['agent','skill'].includes(fTip) ? `<p class="meta" style="margin:8px 0 0"><b>${ag(fTip).length}</b> instalate · <b>${folosit(fTip)}</b> folosite · <b>${ag(fTip).length-folosit(fTip)}</b> nefolosite (măsurat din sesiunile Claude Code de pe acest calculator)</p>` : '';
   const ex = fTip==='toate' ? '' : `<div class="card" style="margin-bottom:8px"><div class="t">${esc(EXPL[fTip][0])}</div><p style="margin:8px 0 0">${esc(EXPL[fTip][1])}</p>${rez}</div>`;
   const had = document.activeElement?.id==='q';
-  setHTML('s-avem', `<div class="card"><b>Nu alegi de aici.</b> Când scrii în Chat, Jarvis (coordonatorul) alege singur agentul sau skill-ul potrivit. Lista e ca să știi ce ai, ce merită folosit și ce stă degeaba.</div>
+  setHTML('s-avem', `<div class="card">Lista e ca să știi ce ai, ce merită folosit și ce stă degeaba.</div>
     <div class="seg" style="margin-top:var(--s3)">${['toate',...Object.keys(TIP)].map(t=>`<button class="${t===fTip?'on':''}" data-tip="${t}">${t==='toate'?'Toate':TIP[t]}<br>${t==='toate'?S.inv.length:ag(t).length}${['agent','skill'].includes(t)?` · ${folosit(t)} folosite`:''}</button>`).join('')}</div>
     <input id="q" type="text" placeholder="Caută în ${S.inv.length} elemente…" aria-label="Caută"><div id="avl" style="margin-top:var(--s3)"></div>`);
   const qi = $('q'); if (qi.value!==q) qi.value = q; if (had && document.activeElement!==qi) qi.focus();
